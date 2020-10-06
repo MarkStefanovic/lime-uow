@@ -1,9 +1,10 @@
 __all__ = (
     "HealthNutApiException",
+    "InvalidResource",
     "MissingResourceError",
+    "MissingTransactionBlock",
     "NestingUnitsOfWorkNotAllowed",
-    "OutsideUnitOfWorkContext",
-    "UninitializedSessionError",
+    "RollbackError",
 )
 
 
@@ -15,8 +16,13 @@ class HealthNutApiException(Exception):
         super().__init__(message)
 
 
+class InvalidResource(HealthNutApiException):
+    def __init__(self, message: str, /):
+        super().__init__(message)
+
+
 class MissingResourceError(HealthNutApiException):
-    def __init__(self, resource_name: str):
+    def __init__(self, resource_name: str, /):
         self.resource_name = resource_name
         msg = f"Could not locate the resource named {resource_name}"
         super().__init__(msg)
@@ -29,13 +35,11 @@ class NestingUnitsOfWorkNotAllowed(HealthNutApiException):
         )
 
 
-class OutsideUnitOfWorkContext(HealthNutApiException):
-    def __init__(self):
-        super().__init__(
-            "Attempted to use a UnitOfWork instance outside a `with` block."
-        )
+class MissingTransactionBlock(HealthNutApiException):
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
-class UninitializedSessionError(HealthNutApiException):
-    def __init__(self):
-        super().__init__("Attempted to use a session that has not been opened yet.")
+class RollbackError(HealthNutApiException):
+    def __init__(self, message: str, /):
+        super().__init__(message)

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lime-uow"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Mark Stefanovic <markstefanovic@hotmail.com>"]
 

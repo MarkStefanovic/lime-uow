@@ -4,6 +4,10 @@ import typing
 
 from lime_uow import Resource, exception, resource_manager
 
+# TODO 202010106: check resource names are unique at initialization
+
+__all__ = ("UnitOfWork",)
+
 
 class UnitOfWork:
     def __init__(self, /, *resources: Resource[typing.Any]):
@@ -28,24 +32,44 @@ class UnitOfWork:
 
     def get_resource(self, resource_name: str) -> typing.Any:
         if not self._activated:
-            raise exception.OutsideUnitOfWorkContext()
+            raise exception.MissingTransactionBlock(
+                "Attempted access a resource managed by a UnitOfWork instance outside a `with` block."
+            )
+
         try:
             mgr = self._resource_managers[resource_name]
         except IndexError:
             raise exception.MissingResourceError(resource_name)
+
         return mgr.open()
 
     def rollback(self):
         if not self._activated:
-            raise exception.OutsideUnitOfWorkContext()
+            raise exception.MissingTransactionBlock(
+                "Attempted to rollback a UnitOfWork instance outside a `with` block."
+            )
 
+        err_messages: typing.List[str] = []
         for resource in self._resource_managers.values():
             if resource.is_open:
-                resource.rollback()
+                try:
+                    resource.rollback()
+                except Exception as e:
+                    err_messages.append(f"{resource.name}: {e}")
+
+        if err_messages:
+            err_msg_list = ", ".join(err_messages)
+            err_msg = (
+                f"The following errors occurred while performing a rollback on the"
+                f" UnitOfWork: {err_msg_list}"
+            )
+            raise exception.RollbackError(err_msg)
 
     def save(self):
         if not self._activated:
-            raise exception.OutsideUnitOfWorkContext()
+            raise exception.MissingTransactionBlock(
+                "Attempted to save a UnitOfWork instance outside a `with` block."
+            )
 
         # noinspection PyBroadException
         try:

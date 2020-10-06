@@ -1,5 +1,6 @@
 import typing
 
+from lime_uow import exception
 from lime_uow.resrc import Resource
 
 __all__ = ("ResourceManager",)
@@ -10,16 +11,16 @@ T = typing.TypeVar("T", covariant=True)
 class ResourceManager(typing.Generic[T]):
     def __init__(self, resource: Resource[T], /):
         if resource is None:
-            raise ValueError(
+            raise exception.InvalidResource(
                 f"Expected a resource with a close and open method, but got None."
             )
 
         if not hasattr(resource, "open") or not hasattr(resource, "close"):
-            raise ValueError(
+            raise exception.InvalidResource(
                 f"Expected a resource with a close and open method, but got {resource!r}."
             )
 
-        self._handle: typing.Optional[T] = None
+        self._handle: typing.Optional[Resource[T]] = None
         self._resource: Resource[T] = resource
 
     def close(self) -> bool:
@@ -34,7 +35,7 @@ class ResourceManager(typing.Generic[T]):
     def is_open(self) -> bool:
         return self._handle is not None
 
-    def open(self) -> T:
+    def open(self) -> Resource[T]:
         if self._handle is None:
             self._handle = self._resource.open()
         return self._handle

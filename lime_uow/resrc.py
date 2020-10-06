@@ -1,3 +1,4 @@
+from __future__ import annotations
 import abc
 import typing
 
@@ -5,12 +6,13 @@ from sqlalchemy import orm
 
 __all__ = (
     "Resource",
-    "SqlAlchemySessionResource",
+    "SqlAlchemyRepository",
 )
 
 from lime_uow import exception
 
 T = typing.TypeVar("T", covariant=True)
+E = typing.TypeVar("E")
 
 
 class Resource(abc.ABC, typing.Generic[T]):
@@ -24,7 +26,7 @@ class Resource(abc.ABC, typing.Generic[T]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def open(self) -> T:
+    def open(self) -> Resource[T]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -38,7 +40,7 @@ class Resource(abc.ABC, typing.Generic[T]):
     def __eq__(self, other: object) -> bool:
         if other.__class__ is self.__class__:
             # noinspection PyTypeChecker
-            return self.name == typing.cast(Resource[T], other).name
+            return self.name == typing.cast(Resource, other).name
         else:
             return NotImplemented
 
@@ -56,35 +58,84 @@ class Resource(abc.ABC, typing.Generic[T]):
         return f"{self.__class__.__name__}({self.name!r})"
 
 
-class SqlAlchemySessionResource(Resource[orm.Session]):
-    def __init__(self, name: str, session_factory: orm.sessionmaker):
+class SqlAlchemyRepository(Resource[typing.Any], typing.Generic[E]):
+    def __init__(
+        self,
+        name: str,
+        entity: typing.Type[E],
+        session: orm.Session,
+    ):
+        super().__init__()
+
+        self._entity = entity
         self._name = name
-        self._session_factory = session_factory
-        self._session: typing.Optional[orm.Session] = None
+        self._session = session
+
+        self.in_transaction = False
+
+    def __enter__(self):
+        return self.open()
+
+    def __exit__(self, *args):
+        return self.close()
 
     def close(self) -> None:
-        if self._session is None:
-            raise exception.UninitializedSessionError()
-        else:
-            self._session.close()
+        self.in_transaction = False
+        # self._session.close()
 
     @property
     def name(self) -> str:
         return self._name
 
-    def open(self) -> orm.Session:
-        if self._session is None:
-            self._session = self._session_factory()
-        return self._session
+    def open(self) -> SqlAlchemyRepository[E]:
+        self.in_transaction = True
+        return self
 
     def rollback(self) -> None:
-        if self._session is None:
-            raise exception.UninitializedSessionError()
+        if not self.in_transaction:
+            raise exception.MissingTransactionBlock(
+                "Attempted to rollback a repository outside of a transaction."
+            )
         else:
             self._session.rollback()
 
     def save(self) -> None:
-        if self._session is None:
-            raise exception.UninitializedSessionError()
+        if not self.in_transaction:
+            raise exception.MissingTransactionBlock(
+                "Attempted to save a repository outside of a transaction."
+            )
         else:
             self._session.commit()
+
+    def add(self, item: E, /) -> E:
+        if not self.in_transaction:
+            raise exception.MissingTransactionBlock(
+                "Attempted to edit repository outside of a transaction."
+            )
+        else:
+            self._session.add(item)
+            return item
+
+    def delete(self, item: E, /) -> E:
+        if not self.in_transaction:
+            raise exception.MissingTransactionBlock(
+                "Attempted to edit repository outside of a transaction."
+            )
+        else:
+            self._session.delete(item)
+            return item
+
+    def update(self, item: E, /) -> E:
+        if not self.in_transaction:
+            raise exception.MissingTransactionBlock(
+                "Attempted to edit repository outside of a transaction."
+            )
+        else:
+            self._session.merge(item)
+            return item
+
+    def get(self, item_id: typing.Any, /) -> E:
+        return self._session.query(self._entity).get(item_id)
+
+    def where(self, predicate: typing.Any, /) -> typing.List[E]:
+        return self._session.query(self._entity).filter(predicate).all()

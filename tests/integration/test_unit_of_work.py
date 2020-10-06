@@ -41,8 +41,8 @@ def test_unit_of_work_raises_error_when_used_outside_with_block():
         TestResource("c"),
     )
     with pytest.raises(
-        exception.OutsideUnitOfWorkContext,
-        match="Attempted to use a UnitOfWork instance outside a `with` block.",
+        exception.MissingTransactionBlock,
+        match="Attempted to rollback a UnitOfWork instance outside a `with` block.",
     ):
         uow.rollback()
 
