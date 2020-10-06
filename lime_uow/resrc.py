@@ -92,47 +92,47 @@ class SqlAlchemyRepository(Resource[typing.Any], typing.Generic[E]):
         return self
 
     def rollback(self) -> None:
-        if not self.in_transaction:
+        if self.in_transaction:
+            self._session.rollback()
+        else:
             raise exception.MissingTransactionBlock(
                 "Attempted to rollback a repository outside of a transaction."
             )
-        else:
-            self._session.rollback()
 
     def save(self) -> None:
-        if not self.in_transaction:
+        if self.in_transaction:
+            self._session.commit()
+        else:
             raise exception.MissingTransactionBlock(
                 "Attempted to save a repository outside of a transaction."
             )
-        else:
-            self._session.commit()
 
     def add(self, item: E, /) -> E:
-        if not self.in_transaction:
-            raise exception.MissingTransactionBlock(
-                "Attempted to edit repository outside of a transaction."
-            )
-        else:
+        if self.in_transaction:
             self._session.add(item)
             return item
+        else:
+            raise exception.MissingTransactionBlock(
+                "Attempted to edit repository outside of a transaction."
+            )
 
     def delete(self, item: E, /) -> E:
-        if not self.in_transaction:
-            raise exception.MissingTransactionBlock(
-                "Attempted to edit repository outside of a transaction."
-            )
-        else:
+        if self.in_transaction:
             self._session.delete(item)
             return item
-
-    def update(self, item: E, /) -> E:
-        if not self.in_transaction:
+        else:
             raise exception.MissingTransactionBlock(
                 "Attempted to edit repository outside of a transaction."
             )
-        else:
+
+    def update(self, item: E, /) -> E:
+        if self.in_transaction:
             self._session.merge(item)
             return item
+        else:
+            raise exception.MissingTransactionBlock(
+                "Attempted to edit repository outside of a transaction."
+            )
 
     def get(self, item_id: typing.Any, /) -> E:
         return self._session.query(self._entity).get(item_id)

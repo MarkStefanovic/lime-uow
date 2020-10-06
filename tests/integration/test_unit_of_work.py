@@ -34,6 +34,20 @@ class TestResource(Resource[Recorder]):
         self._handle.events.append("save")
 
 
+def test_uow_raises_error_when_duplicate_resource_names_are_given():
+    with pytest.raises(
+        exception.DuplicateResourceNames,
+        match="Resource names must be unique, but found the following duplicates: a = 2, c = 2",
+    ):
+        UnitOfWork(
+            TestResource("a"),
+            TestResource("c"),
+            TestResource("c"),
+            TestResource("a"),
+            TestResource("b"),
+        )
+
+
 def test_unit_of_work_raises_error_when_used_outside_with_block():
     uow = UnitOfWork(
         TestResource("a"),

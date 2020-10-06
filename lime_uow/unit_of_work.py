@@ -4,13 +4,16 @@ import typing
 
 from lime_uow import Resource, exception, resource_manager
 
-# TODO 202010106: check resource names are unique at initialization
-
 __all__ = ("UnitOfWork",)
 
 
 class UnitOfWork:
     def __init__(self, /, *resources: Resource[typing.Any]):
+        names = [resource.name for resource in resources]
+        duplicate_names = {name: ct for name in names if (ct := names.count(name)) > 1}
+        if duplicate_names:
+            raise exception.DuplicateResourceNames(duplicate_names)
+
         self._resource_managers = {
             resource.name: resource_manager.ResourceManager(resource)
             for resource in resources
