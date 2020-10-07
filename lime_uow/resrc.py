@@ -58,7 +58,31 @@ class Resource(abc.ABC, typing.Generic[T]):
         return f"{self.__class__.__name__}({self.name!r})"
 
 
-class SqlAlchemyRepository(Resource[typing.Any], typing.Generic[E]):
+class Repository(abc.ABC, typing.Generic[E]):
+    """Interface to access elements of a collection"""
+
+    @abc.abstractmethod
+    def add(self, item: E, /) -> E:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def all(self) -> typing.Iterable[E]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def delete(self, item: E, /) -> E:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def update(self, item: E, /) -> E:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get(self, item_id: typing.Any, /) -> E:
+        raise NotImplementedError
+
+
+class SqlAlchemyRepository(Resource[E], Repository[E], typing.Generic[E]):
     def __init__(
         self,
         name: str,
@@ -79,6 +103,7 @@ class SqlAlchemyRepository(Resource[typing.Any], typing.Generic[E]):
     def __exit__(self, *args):
         return self.close()
 
+    # RESOURCE METHODS
     def close(self) -> None:
         self.in_transaction = False
         # self._session.close()
@@ -106,6 +131,11 @@ class SqlAlchemyRepository(Resource[typing.Any], typing.Generic[E]):
             raise exception.MissingTransactionBlock(
                 "Attempted to save a repository outside of a transaction."
             )
+    # END RESOURCE METHODS
+
+    # REPOSITORY METHODS
+    def all(self) -> typing.Generator[E, None, None]:
+        return self._session.query(self._entity).all()
 
     def add(self, item: E, /) -> E:
         if self.in_transaction:
@@ -136,6 +166,85 @@ class SqlAlchemyRepository(Resource[typing.Any], typing.Generic[E]):
 
     def get(self, item_id: typing.Any, /) -> E:
         return self._session.query(self._entity).get(item_id)
+    # END REPOSITORY METHODS
 
     def where(self, predicate: typing.Any, /) -> typing.List[E]:
         return self._session.query(self._entity).filter(predicate).all()
+
+
+class DictRepository(Resource[E], Repository[E], typing.Generic[E]):
+    """Repository implementation based on a dictionary
+
+    This exists primarily to make testing in client code simpler.  It was not designed for efficiency.
+    """
+
+    def __init__(
+        self,
+        *,
+        name: str,
+        initial_values: typing.Dict[typing.Hashable, E],
+        key_fn: typing.Callable[[E], typing.Hashable],
+    ):
+        self._name = name
+        self._previous_state = initial_values
+        self._current_state = initial_values.copy()
+        self._key_fn = key_fn
+
+        self.events: typing.List[typing.Tuple[str, typing.Dict[str, typing.Any]]] = []
+
+    def __enter__(self):
+        return self.open()
+
+    def __exit__(self, *args):
+        self.rollback()
+        return self.close()
+
+    # RESOURCE METHODS
+    def close(self) -> None:
+        self.events.append(("close", {}))
+        self._current_state = {}
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def open(self) -> DictRepository[T]:
+        self.events = [("open", {})]
+        return self
+
+    def rollback(self) -> None:
+        self.events.append(("rollback", {}))
+        self._current_state = self._previous_state.copy()
+
+    def save(self) -> None:
+        self.events.append(("save", {}))
+        self._previous_state = self._current_state.copy()
+    # END RESOURCE METHODS
+
+    # REPOSITORY METHODS
+    def add(self, item: E, /) -> E:
+        self.events.append(("add", {"item": item}))
+        key = self._key_fn(item)
+        self._current_state[key] = item
+        return item
+
+    def all(self) -> typing.Iterable[E]:
+        self.events.append(("all", {}))
+        return list(self._current_state.values())
+
+    def delete(self, item: E, /) -> E:
+        self.events.append(("delete", {"item": item}))
+        key = self._key_fn(item)
+        del self._current_state[key]
+        return item
+
+    def update(self, item: E, /) -> E:
+        self.events.append(("update", {"item": item}))
+        key = self._key_fn(item)
+        self._current_state[key] = item
+        return item
+
+    def get(self, item_id: typing.Any, /) -> E:
+        self.events.append(("get", {"item_id": item_id}))
+        return self._current_state[item_id]
+    # END REPOSITORY METHODS
