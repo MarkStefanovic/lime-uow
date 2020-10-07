@@ -5,6 +5,7 @@ import typing
 from sqlalchemy import orm
 
 __all__ = (
+    "DictRepository",
     "Resource",
     "SqlAlchemyRepository",
 )

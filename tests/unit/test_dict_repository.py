@@ -1,4 +1,4 @@
-from lime_uow.resrc import DictRepository
+from lime_uow import *
 from tests.conftest import User
 
 

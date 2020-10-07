@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name="lime-uow",
-    version="0.1.0",
+    version="0.1.4",
     packages=["lime_uow"],
     url="",
     license="MIT",
