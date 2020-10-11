@@ -6,6 +6,7 @@ from sqlalchemy import orm
 
 __all__ = (
     "DictRepository",
+    "Repository",
     "Resource",
     "SqlAlchemyRepository",
 )
