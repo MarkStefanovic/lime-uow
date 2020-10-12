@@ -1,55 +1,37 @@
-import pytest
-from sqlalchemy import orm
-
-from lime_uow import UnitOfWork, exception
-from lime_uow.resrc import SqlAlchemyRepository
-from tests.conftest import User
+from lime_uow import exceptions, unit_of_work
+from tests.conftest import *
 
 
-def test_sqlalchemy_repository_raises_uninitialized_exception_outise_transaction(
-    session_factory: orm.sessionmaker,
+def test_sqlalchemy_repository_raises_uninitialized_exception_outside_transaction(
+    user_repo: UserRepository,
 ):
-    session = session_factory()
-    repo = SqlAlchemyRepository(
-        name="user_repo",
-        entity=User,
-        session=session,
-    )
     with pytest.raises(
-        exception.MissingTransactionBlock,
+        exceptions.MissingTransactionBlock,
         match="Attempted to edit repository outside of a transaction.",
     ):
-        repo.add(User(id=1, name="Mark"))
+        user_repo.add(User(user_id=1, name="Mark"))
 
 
-def test_sqlalchemy_repository_add_works(
-    session_factory: orm.sessionmaker,
+def test_sqlalchemy_repository_add_works_inside_context_manager(
+    user_repo: UserRepository,
 ):
-    session = session_factory()
-    with UnitOfWork(
-        SqlAlchemyRepository(name="user_repo", entity=User, session=session)
-    ) as uow:
-        repo = uow.get_resource("user_repo")
-        repo.add(User(id=1, name="Mark"))
-        repo.add(User(id=2, name="Mandie"))
+    new_user = User(user_id=999, name="Steve")
+    with unit_of_work.UnitOfWork(user_repo) as uow:
+        repo = uow.get_resource(UserRepository)
+        repo.add(new_user)
         uow.save()
 
-    actual = session.query(User).all()
-    assert actual == [User(id=1, name="Mark"), User(id=2, name="Mandie")]
+    actual = user_repo.session.query(User).all()
+    assert actual == [User(user_id=1, name="Mark"), User(user_id=2, name="Mandie"), new_user]
 
 
-def test_sqlalchemy_repository_get_works(
-    session_factory: orm.sessionmaker,
+def test_sqlalchemy_repository_get_resource_by_name_works(
+    user_repo: UserRepository,
 ):
-    session = session_factory()
-    session.add(User(id=1, name="Mandie"))
-    session.add(User(id=2, name="Mark"))
-    session.commit()
-
-    with UnitOfWork(
-        SqlAlchemyRepository(name="user_repo", entity=User, session=session)
-    ) as uow:
-        repo: SqlAlchemyRepository[User] = uow.get_resource("user_repo")
+    with unit_of_work.UnitOfWork(user_repo) as uow:
+        repo: resources.SqlAlchemyRepository[User] = uow.get_resource_by_name(
+            "user_repo"
+        )
         actual = repo.get(2)
-    print(f"{actual=}")
-    assert actual == User(id=2, name="Mark")
+    expected = User(user_id=2, name='Mandie')
+    assert actual == expected

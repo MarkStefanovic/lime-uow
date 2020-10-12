@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import abc
 import typing
 
@@ -11,25 +12,33 @@ __all__ = (
     "SqlAlchemyRepository",
 )
 
-from lime_uow import exception
+from lime_uow import exceptions
 
 T = typing.TypeVar("T", covariant=True)
 E = typing.TypeVar("E")
 
 
 class Resource(abc.ABC, typing.Generic[T]):
+    __resource_name__: typing.Optional[str] = None
+
+    def __init__(self):
+        if self.__resource_name__ is None:
+            raise exceptions.ClassMissingResourceNameOverride(self.__class__.__name__)
+
     @abc.abstractmethod
     def close(self) -> None:
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def name(self) -> str:
         raise NotImplementedError
 
     @abc.abstractmethod
     def open(self) -> Resource[T]:
         raise NotImplementedError
+
+    @property
+    def name(self) -> str:
+        if self.__resource_name__ is None:
+            raise exceptions.ClassMissingResourceNameOverride(self.__class__.__name__)
+        else:
+            return self.__resource_name__
 
     @abc.abstractmethod
     def rollback(self) -> None:
@@ -60,7 +69,7 @@ class Resource(abc.ABC, typing.Generic[T]):
         return f"{self.__class__.__name__}({self.name!r})"
 
 
-class Repository(abc.ABC, typing.Generic[E]):
+class Repository(Resource[E], abc.ABC, typing.Generic[E]):
     """Interface to access elements of a collection"""
 
     @abc.abstractmethod
@@ -84,17 +93,15 @@ class Repository(abc.ABC, typing.Generic[E]):
         raise NotImplementedError
 
 
-class SqlAlchemyRepository(Resource[E], Repository[E], typing.Generic[E]):
+class SqlAlchemyRepository(Repository[E], typing.Generic[E]):
     def __init__(
         self,
-        name: str,
         entity: typing.Type[E],
         session: orm.Session,
     ):
         super().__init__()
 
         self._entity = entity
-        self._name = name
         self._session = session
 
         self.in_transaction = False
@@ -105,14 +112,9 @@ class SqlAlchemyRepository(Resource[E], Repository[E], typing.Generic[E]):
     def __exit__(self, *args):
         return self.close()
 
-    # RESOURCE METHODS
     def close(self) -> None:
         self.in_transaction = False
         # self._session.close()
-
-    @property
-    def name(self) -> str:
-        return self._name
 
     def open(self) -> SqlAlchemyRepository[E]:
         self.in_transaction = True
@@ -122,7 +124,7 @@ class SqlAlchemyRepository(Resource[E], Repository[E], typing.Generic[E]):
         if self.in_transaction:
             self._session.rollback()
         else:
-            raise exception.MissingTransactionBlock(
+            raise exceptions.MissingTransactionBlock(
                 "Attempted to rollback a repository outside of a transaction."
             )
 
@@ -130,12 +132,10 @@ class SqlAlchemyRepository(Resource[E], Repository[E], typing.Generic[E]):
         if self.in_transaction:
             self._session.commit()
         else:
-            raise exception.MissingTransactionBlock(
+            raise exceptions.MissingTransactionBlock(
                 "Attempted to save a repository outside of a transaction."
             )
-    # END RESOURCE METHODS
 
-    # REPOSITORY METHODS
     def all(self) -> typing.Generator[E, None, None]:
         return self._session.query(self._entity).all()
 
@@ -144,7 +144,7 @@ class SqlAlchemyRepository(Resource[E], Repository[E], typing.Generic[E]):
             self._session.add(item)
             return item
         else:
-            raise exception.MissingTransactionBlock(
+            raise exceptions.MissingTransactionBlock(
                 "Attempted to edit repository outside of a transaction."
             )
 
@@ -153,7 +153,7 @@ class SqlAlchemyRepository(Resource[E], Repository[E], typing.Generic[E]):
             self._session.delete(item)
             return item
         else:
-            raise exception.MissingTransactionBlock(
+            raise exceptions.MissingTransactionBlock(
                 "Attempted to edit repository outside of a transaction."
             )
 
@@ -162,19 +162,18 @@ class SqlAlchemyRepository(Resource[E], Repository[E], typing.Generic[E]):
             self._session.merge(item)
             return item
         else:
-            raise exception.MissingTransactionBlock(
+            raise exceptions.MissingTransactionBlock(
                 "Attempted to edit repository outside of a transaction."
             )
 
     def get(self, item_id: typing.Any, /) -> E:
         return self._session.query(self._entity).get(item_id)
-    # END REPOSITORY METHODS
 
     def where(self, predicate: typing.Any, /) -> typing.List[E]:
         return self._session.query(self._entity).filter(predicate).all()
 
 
-class DictRepository(Resource[E], Repository[E], typing.Generic[E]):
+class DictRepository(Repository[E], typing.Generic[E]):
     """Repository implementation based on a dictionary
 
     This exists primarily to make testing in client code simpler.  It was not designed for efficiency.
@@ -183,11 +182,11 @@ class DictRepository(Resource[E], Repository[E], typing.Generic[E]):
     def __init__(
         self,
         *,
-        name: str,
         initial_values: typing.Dict[typing.Hashable, E],
         key_fn: typing.Callable[[E], typing.Hashable],
     ):
-        self._name = name
+        super().__init__()
+
         self._previous_state = initial_values
         self._current_state = initial_values.copy()
         self._key_fn = key_fn
@@ -201,16 +200,11 @@ class DictRepository(Resource[E], Repository[E], typing.Generic[E]):
         self.rollback()
         return self.close()
 
-    # RESOURCE METHODS
     def close(self) -> None:
         self.events.append(("close", {}))
         self._current_state = {}
 
-    @property
-    def name(self) -> str:
-        return self._name
-
-    def open(self) -> DictRepository[T]:
+    def open(self) -> DictRepository[E]:
         self.events = [("open", {})]
         return self
 
@@ -221,9 +215,7 @@ class DictRepository(Resource[E], Repository[E], typing.Generic[E]):
     def save(self) -> None:
         self.events.append(("save", {}))
         self._previous_state = self._current_state.copy()
-    # END RESOURCE METHODS
 
-    # REPOSITORY METHODS
     def add(self, item: E, /) -> E:
         self.events.append(("add", {"item": item}))
         key = self._key_fn(item)
@@ -249,4 +241,3 @@ class DictRepository(Resource[E], Repository[E], typing.Generic[E]):
     def get(self, item_id: typing.Any, /) -> E:
         self.events.append(("get", {"item_id": item_id}))
         return self._current_state[item_id]
-    # END REPOSITORY METHODS

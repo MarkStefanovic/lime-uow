@@ -1,38 +1,27 @@
-from sqlalchemy import orm
-
 from lime_uow import *
-from tests.conftest import User
+from tests.conftest import User, UserRepository
 
 
-def test_unit_of_work_save(session_factory: orm.sessionmaker):
-    session = session_factory()
-    resource = SqlAlchemyRepository(
-        entity=User,
-        name="user_session",
-        session=session,
-    )
-    with UnitOfWork(resource) as uow:
-        session = uow.get_resource("user_session")
-        session.add(User(id=1, name="Mark"))
+def test_unit_of_work_save(user_repo: UserRepository):
+    with UnitOfWork(user_repo) as uow:
+        session = uow.get_resource(UserRepository)
+        session.add(User(user_id=999, name="Steve"))
         uow.save()
 
-    session = session_factory()
-    actual = session.query(User).all()
-    assert actual == [User(id=1, name="Mark")]
+    actual = user_repo.session.query(User).all()
+    assert actual == [
+        User(user_id=1, name="Mark"),
+        User(user_id=2, name="Mandie"),
+        User(user_id=999, name="Steve"),
+    ]
 
 
-def test_unit_of_work_rollback(session_factory: orm.sessionmaker):
-    session = session_factory()
-    resource = SqlAlchemyRepository(
-        entity=User,
-        name="user_session",
-        session=session,
-    )
-    with UnitOfWork(resource) as uow:
-        session = uow.get_resource("user_session")
-        session.add(User(1, "Mark"))
+def test_unit_of_work_rollback(user_repo: UserRepository):
+    with UnitOfWork(user_repo) as uow:
+        session = uow.get_resource(UserRepository)
+        session.add(User(999, "Mark"))
         uow.rollback()
 
-    session = session_factory()
-    actual = session.query(User).all()
-    assert actual == []
+    actual = user_repo.session.query(User).all()
+    expected = [User(user_id=1, name="Mark"), User(user_id=2, name="Mandie")]
+    assert actual == expected

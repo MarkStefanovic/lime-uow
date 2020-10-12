@@ -2,27 +2,30 @@ from __future__ import annotations
 
 import typing
 
-from lime_uow import Resource, exception, resource_manager
+from lime_uow import resources, exceptions, _resource_manager
 
 __all__ = ("UnitOfWork",)
 
 
+T = typing.TypeVar("T", bound=resources.Resource[typing.Any])
+
+
 class UnitOfWork:
-    def __init__(self, /, *resources: Resource[typing.Any]):
-        names = [resource.name for resource in resources]
+    def __init__(self, /, *resource: resources.Resource[typing.Any]):
+        names = [resource.name for resource in resource]
         duplicate_names = {name: ct for name in names if (ct := names.count(name)) > 1}
         if duplicate_names:
-            raise exception.DuplicateResourceNames(duplicate_names)
+            raise exceptions.DuplicateResourceNames(duplicate_names)
 
         self._resource_managers = {
-            resource.name: resource_manager.ResourceManager(resource)
-            for resource in resources
+            resource.name: _resource_manager.ResourceManager(resource)
+            for resource in resource
         }
         self._activated = False
 
     def __enter__(self) -> UnitOfWork:
         if self._activated:
-            raise exception.NestingUnitsOfWorkNotAllowed()
+            raise exceptions.NestingUnitsOfWorkNotAllowed()
 
         self._activated = True
         return self
@@ -33,22 +36,24 @@ class UnitOfWork:
             resource.close()
         self._activated = False
 
-    def get_resource(self, resource_name: str) -> typing.Any:
+    def get_resource(self, resource_type: typing.Type[T], /) -> T:
+        return self.get_resource_by_name(resource_type.__resource_name__)
+
+    def get_resource_by_name(self, resource_name: str) -> typing.Any:
         if not self._activated:
-            raise exception.MissingTransactionBlock(
+            raise exceptions.MissingTransactionBlock(
                 "Attempted access a resource managed by a UnitOfWork instance outside a `with` block."
             )
-
         try:
             mgr = self._resource_managers[resource_name]
-        except IndexError:
-            raise exception.MissingResourceError(resource_name)
+        except KeyError:
+            raise exceptions.MissingResourceError(resource_name)
 
         return mgr.open()
 
     def rollback(self):
         if not self._activated:
-            raise exception.MissingTransactionBlock(
+            raise exceptions.MissingTransactionBlock(
                 "Attempted to rollback a UnitOfWork instance outside a `with` block."
             )
 
@@ -66,11 +71,11 @@ class UnitOfWork:
                 f"The following errors occurred while performing a rollback on the"
                 f" UnitOfWork: {err_msg_list}"
             )
-            raise exception.RollbackError(err_msg)
+            raise exceptions.RollbackError(err_msg)
 
     def save(self):
         if not self._activated:
-            raise exception.MissingTransactionBlock(
+            raise exceptions.MissingTransactionBlock(
                 "Attempted to save a UnitOfWork instance outside a `with` block."
             )
 

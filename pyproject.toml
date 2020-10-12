@@ -1,9 +1,11 @@
 [tool.poetry]
 name = "lime-uow"
-version = "0.1.6"
+version = "0.1.12"
 description = "Framework to support the Unit-of-Work pattern"
 authors = ["Mark Stefanovic <markstefanovic@hotmail.com>"]
 include = ["lime_uow/py.typed"]
+license = "MIT"
+repository = "https://github.com/MarkStefanovic/lime-uow"
 
 [tool.poetry.dependencies]
 python = "^3.8"

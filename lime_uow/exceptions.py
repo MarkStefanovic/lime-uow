@@ -1,7 +1,7 @@
 import typing
 
 __all__ = (
-    "LimeUOW",
+    "LimeUoWException",
     "DuplicateResourceNames",
     "InvalidResource",
     "MissingResourceError",
@@ -11,7 +11,7 @@ __all__ = (
 )
 
 
-class LimeUOW(Exception):
+class LimeUoWException(Exception):
     """Base class for exceptions arising from the lime-uow package"""
 
     def __init__(self, message: str, /):
@@ -19,7 +19,17 @@ class LimeUOW(Exception):
         super().__init__(message)
 
 
-class DuplicateResourceNames(LimeUOW):
+class ClassMissingResourceNameOverride(LimeUoWException):
+    def __init__(self, class_name: str):
+        self.class_name = class_name
+        msg = (
+            f"The class, {class_name}, must override the __resource_name__ class attribute in "
+            f"order to use the .from_uow class method."
+        )
+        super().__init__(msg)
+
+
+class DuplicateResourceNames(LimeUoWException):
     def __init__(self, duplicates: typing.Mapping[str, int], /):
         self.duplicates = duplicates
 
@@ -30,30 +40,30 @@ class DuplicateResourceNames(LimeUOW):
         super().__init__(msg)
 
 
-class InvalidResource(LimeUOW):
+class InvalidResource(LimeUoWException):
     def __init__(self, message: str, /):
         super().__init__(message)
 
 
-class MissingResourceError(LimeUOW):
+class MissingResourceError(LimeUoWException):
     def __init__(self, resource_name: str, /):
         self.resource_name = resource_name
-        msg = f"Could not locate the resource named {resource_name}"
+        msg = f"Could not locate a resource named {resource_name!r}"
         super().__init__(msg)
 
 
-class NestingUnitsOfWorkNotAllowed(LimeUOW):
+class NestingUnitsOfWorkNotAllowed(LimeUoWException):
     def __init__(self):
         super().__init__(
             "Attempted to nest a UnitOfWork instance inside another.  That is not supported."
         )
 
 
-class MissingTransactionBlock(LimeUOW):
+class MissingTransactionBlock(LimeUoWException):
     def __init__(self, message: str):
         super().__init__(message)
 
 
-class RollbackError(LimeUOW):
+class RollbackError(LimeUoWException):
     def __init__(self, message: str, /):
         super().__init__(message)
