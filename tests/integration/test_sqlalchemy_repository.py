@@ -24,8 +24,15 @@ def test_sqlalchemy_repository_get_resource_by_name_works(
 ):
     with unit_of_work.UnitOfWork(user_repo) as uow:
         repo: resources.SqlAlchemyRepository[User] = uow.get_resource_by_name(
-            "user_repository"
+            "AbstractUserRepository"
         )
         actual = repo.get(2)
     expected = User(user_id=2, name="Mandie")
     assert actual == expected
+
+
+def test_sqlalchemy_repository_resource_name_defaults_to_interface_name(
+    session_factory: orm.sessionmaker
+):
+    session = session_factory()
+    assert UserRepository(session=session).resource_name() == "AbstractUserRepository"

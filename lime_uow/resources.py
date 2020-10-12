@@ -42,8 +42,9 @@ class Resource(abc.ABC, typing.Generic[T]):
         raise NotImplementedError
 
     @classmethod
+    @abc.abstractmethod
     def resource_name(cls) -> str:
-        return cls.__name__
+        raise NotImplementedError
 
     @abc.abstractmethod
     def rollback(self) -> None:
@@ -98,53 +99,61 @@ class Repository(Resource[E], abc.ABC, typing.Generic[E]):
         raise NotImplementedError
 
 
-class SqlAlchemyRepository(Repository[E], typing.Generic[E]):
-    def __init__(
-        self,
-        entity: typing.Type[E],
-        session: orm.Session,
-    ):
-        super().__init__()
+class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
+    def add(self, item: E, /) -> E:
+        self.session.add(item)
+        return item
 
-        self._entity = entity
-        self._session = session
+    def all(self) -> typing.Generator[E, None, None]:
+        return self.session.query(self.entity_type).all()
 
     def close(self) -> None:
         pass
         # self._session.close()
 
-    def open(self) -> SqlAlchemyRepository[E]:
-        return self
-
-    def rollback(self) -> None:
-        self._session.rollback()
-
-    def save(self) -> None:
-        self._session.commit()
-
-    def all(self) -> typing.Generator[E, None, None]:
-        return self._session.query(self._entity).all()
-
-    def add(self, item: E, /) -> E:
-        self._session.add(item)
-        return item
-
     def delete(self, item: E, /) -> E:
-        self._session.delete(item)
-        return item
-
-    def update(self, item: E, /) -> E:
-        self._session.merge(item)
+        self.session.delete(item)
         return item
 
     def get(self, item_id: typing.Any, /) -> E:
-        return self._session.query(self._entity).get(item_id)
+        return self.session.query(self.entity_type).get(item_id)
+
+    @property
+    @abc.abstractmethod
+    def entity_type(self) -> typing.Type[E]:
+        raise NotImplementedError
+
+    def open(self) -> SqlAlchemyRepository[E]:
+        return self
+
+    @classmethod
+    def resource_name(cls) -> str:
+        return next(
+            base.__name__
+            for base in cls.__bases__
+            if any(b is SqlAlchemyRepository for b in base.__bases__)
+        )
+
+    def rollback(self) -> None:
+        self.session.rollback()
+
+    @property
+    @abc.abstractmethod
+    def session(self) -> orm.Session:
+        raise NotImplementedError
+
+    def save(self) -> None:
+        self.session.commit()
+
+    def update(self, item: E, /) -> E:
+        self.session.merge(item)
+        return item
 
     def where(self, predicate: typing.Any, /) -> typing.List[E]:
-        return self._session.query(self._entity).filter(predicate).all()
+        return self.session.query(self.entity_type).filter(predicate).all()
 
 
-class DictRepository(Repository[E], typing.Generic[E]):
+class DictRepository(Repository[E], abc.ABC, typing.Generic[E]):
     """Repository implementation based on a dictionary
 
     This exists primarily to make testing in client code simpler.  It was not designed for efficiency.

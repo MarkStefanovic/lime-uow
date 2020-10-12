@@ -1,3 +1,4 @@
+import abc
 import dataclasses
 
 import pytest
@@ -7,6 +8,7 @@ from sqlalchemy import orm
 from sqlalchemy.orm.base import _is_mapped_class
 
 from lime_uow import resources
+from lime_uow.resources import E
 
 metadata = sa.MetaData()
 
@@ -32,15 +34,28 @@ def initial_users() -> typing.List[User]:
     ]
 
 
-class UserRepository(resources.SqlAlchemyRepository[User]):
-    @classmethod
-    def resource_name(cls) -> str:
-        return "user_repository"
+class AbstractUserRepository(resources.SqlAlchemyRepository[User], abc.ABC):
+    @abc.abstractmethod
+    def get_first(self) -> User:
+        raise NotImplementedError
 
+
+class UserRepository(AbstractUserRepository):
     def __init__(self, session: orm.Session):
-        self.session = session
+        self._session = session
 
-        super().__init__(entity=User, session=session)
+        super().__init__()
+
+    @property
+    def entity_type(self) -> typing.Type[E]:
+        return User
+
+    @property
+    def session(self) -> orm.Session:
+        return self._session
+
+    def get_first(self) -> User:
+        return next(self.all())
 
 
 @pytest.fixture

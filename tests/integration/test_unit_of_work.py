@@ -28,9 +28,9 @@ class TestResource(Resource[Recorder]):
         self._handle.events.append("open")
         return self._handle
 
-    # @classmethod
-    # def resource_name(cls) -> str:
-    #     return "test_resource"
+    @classmethod
+    def resource_name(cls) -> str:
+        return cls.__name__
 
     def rollback(self) -> None:
         self._handle.events.append("rollback")
