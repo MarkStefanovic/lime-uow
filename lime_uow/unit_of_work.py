@@ -7,7 +7,7 @@ from lime_uow import resources, exceptions
 __all__ = ("UnitOfWork",)
 
 
-T = typing.TypeVar("T", bound=resources.Resource[typing.Any])
+ResourceSubclass = typing.TypeVar("ResourceSubclass", bound=resources.Resource[typing.Any])
 
 
 class UnitOfWork:
@@ -27,7 +27,7 @@ class UnitOfWork:
         for resource in self._resources.values():
             resource.close()
 
-    def get_resource(self, resource_type: typing.Type[T], /) -> T:
+    def get_resource(self, resource_type: typing.Type[ResourceSubclass], /) -> ResourceSubclass:
         return self.get_resource_by_name(resource_type.resource_name())
 
     def get_resource_by_name(self, resource_name: str) -> typing.Any:
