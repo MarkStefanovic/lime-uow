@@ -2,13 +2,15 @@ from tests.conftest import *
 
 
 class DummyDictRepository(resources.DictRepository):
-    __resource_name__ = "dummy_dict_repository"
-
     def __init__(self, initial_users: typing.List[User]):
         super(DummyDictRepository, self).__init__(
             initial_values={user.user_id: user for user in initial_users},
             key_fn=lambda user: user.user_id,
         )
+
+    @classmethod
+    def resource_name(cls) -> str:
+        return "dummy_dict_repository"
 
 
 def test_dict_repository_all_method(initial_users: typing.List[User]):

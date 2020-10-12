@@ -4,9 +4,9 @@ from tests.conftest import User, UserRepository
 
 def test_unit_of_work_save(user_repo: UserRepository):
     with UnitOfWork(user_repo) as uow:
-        session = uow.get_resource(UserRepository)
-        session.add(User(user_id=999, name="Steve"))
-        uow.save()
+        with uow.get_resource(UserRepository) as repo:
+            repo.add(User(user_id=999, name="Steve"))
+            uow.save()
 
     actual = user_repo.session.query(User).all()
     assert actual == [
@@ -18,9 +18,9 @@ def test_unit_of_work_save(user_repo: UserRepository):
 
 def test_unit_of_work_rollback(user_repo: UserRepository):
     with UnitOfWork(user_repo) as uow:
-        session = uow.get_resource(UserRepository)
-        session.add(User(999, "Mark"))
-        uow.rollback()
+        with uow.get_resource(UserRepository) as repo:
+            repo.add(User(999, "Mark"))
+            uow.rollback()
 
     actual = user_repo.session.query(User).all()
     expected = [User(user_id=1, name="Mark"), User(user_id=2, name="Mandie")]

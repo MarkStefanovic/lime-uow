@@ -5,7 +5,6 @@ __all__ = (
     "DuplicateResourceNames",
     "InvalidResource",
     "MissingResourceError",
-    "MissingTransactionBlock",
     "NestingUnitsOfWorkNotAllowed",
     "RollbackError",
 )
@@ -17,16 +16,6 @@ class LimeUoWException(Exception):
     def __init__(self, message: str, /):
         self.message = message
         super().__init__(message)
-
-
-class ClassMissingResourceNameOverride(LimeUoWException):
-    def __init__(self, class_name: str):
-        self.class_name = class_name
-        msg = (
-            f"The class, {class_name}, must override the __resource_name__ class attribute in "
-            f"order to use the .from_uow class method."
-        )
-        super().__init__(msg)
 
 
 class DuplicateResourceNames(LimeUoWException):
@@ -57,11 +46,6 @@ class NestingUnitsOfWorkNotAllowed(LimeUoWException):
         super().__init__(
             "Attempted to nest a UnitOfWork instance inside another.  That is not supported."
         )
-
-
-class MissingTransactionBlock(LimeUoWException):
-    def __init__(self, message: str):
-        super().__init__(message)
 
 
 class RollbackError(LimeUoWException):

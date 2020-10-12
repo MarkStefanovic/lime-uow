@@ -12,33 +12,38 @@ __all__ = (
     "SqlAlchemyRepository",
 )
 
-from lime_uow import exceptions
-
 T = typing.TypeVar("T", covariant=True)
 E = typing.TypeVar("E")
 
 
 class Resource(abc.ABC, typing.Generic[T]):
-    __resource_name__: typing.Optional[str] = None
-
     def __init__(self):
-        if self.__resource_name__ is None:
-            raise exceptions.ClassMissingResourceNameOverride(self.__class__.__name__)
+        self._is_open = False
+
+    def __enter__(self):
+        self._is_open = True
+        return self.open()
+
+    def __exit__(self, *args):
+        self._is_open = False
+        self.rollback()
+        return self.close()
 
     @abc.abstractmethod
     def close(self) -> None:
         raise NotImplementedError
 
+    @property
+    def is_open(self) -> bool:
+        return self._is_open
+
     @abc.abstractmethod
     def open(self) -> Resource[T]:
         raise NotImplementedError
 
-    @property
-    def name(self) -> str:
-        if self.__resource_name__ is None:
-            raise exceptions.ClassMissingResourceNameOverride(self.__class__.__name__)
-        else:
-            return self.__resource_name__
+    @classmethod
+    def resource_name(cls) -> str:
+        return cls.__name__
 
     @abc.abstractmethod
     def rollback(self) -> None:
@@ -51,7 +56,7 @@ class Resource(abc.ABC, typing.Generic[T]):
     def __eq__(self, other: object) -> bool:
         if other.__class__ is self.__class__:
             # noinspection PyTypeChecker
-            return self.name == typing.cast(Resource, other).name
+            return self.resource_name == typing.cast(Resource, other).resource_name
         else:
             return NotImplemented
 
@@ -63,10 +68,10 @@ class Resource(abc.ABC, typing.Generic[T]):
             return not result
 
     def __hash__(self) -> int:
-        return hash(self.name)
+        return hash(self.resource_name())
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.name!r})"
+        return f"{self.__class__.__name__}: {self.resource_name()}"
 
 
 class Repository(Resource[E], abc.ABC, typing.Generic[E]):
@@ -104,67 +109,33 @@ class SqlAlchemyRepository(Repository[E], typing.Generic[E]):
         self._entity = entity
         self._session = session
 
-        self.in_transaction = False
-
-    def __enter__(self):
-        return self.open()
-
-    def __exit__(self, *args):
-        return self.close()
-
     def close(self) -> None:
-        self.in_transaction = False
+        pass
         # self._session.close()
 
     def open(self) -> SqlAlchemyRepository[E]:
-        self.in_transaction = True
         return self
 
     def rollback(self) -> None:
-        if self.in_transaction:
-            self._session.rollback()
-        else:
-            raise exceptions.MissingTransactionBlock(
-                "Attempted to rollback a repository outside of a transaction."
-            )
+        self._session.rollback()
 
     def save(self) -> None:
-        if self.in_transaction:
-            self._session.commit()
-        else:
-            raise exceptions.MissingTransactionBlock(
-                "Attempted to save a repository outside of a transaction."
-            )
+        self._session.commit()
 
     def all(self) -> typing.Generator[E, None, None]:
         return self._session.query(self._entity).all()
 
     def add(self, item: E, /) -> E:
-        if self.in_transaction:
-            self._session.add(item)
-            return item
-        else:
-            raise exceptions.MissingTransactionBlock(
-                "Attempted to edit repository outside of a transaction."
-            )
+        self._session.add(item)
+        return item
 
     def delete(self, item: E, /) -> E:
-        if self.in_transaction:
-            self._session.delete(item)
-            return item
-        else:
-            raise exceptions.MissingTransactionBlock(
-                "Attempted to edit repository outside of a transaction."
-            )
+        self._session.delete(item)
+        return item
 
     def update(self, item: E, /) -> E:
-        if self.in_transaction:
-            self._session.merge(item)
-            return item
-        else:
-            raise exceptions.MissingTransactionBlock(
-                "Attempted to edit repository outside of a transaction."
-            )
+        self._session.merge(item)
+        return item
 
     def get(self, item_id: typing.Any, /) -> E:
         return self._session.query(self._entity).get(item_id)
@@ -192,13 +163,6 @@ class DictRepository(Repository[E], typing.Generic[E]):
         self._key_fn = key_fn
 
         self.events: typing.List[typing.Tuple[str, typing.Dict[str, typing.Any]]] = []
-
-    def __enter__(self):
-        return self.open()
-
-    def __exit__(self, *args):
-        self.rollback()
-        return self.close()
 
     def close(self) -> None:
         self.events.append(("close", {}))

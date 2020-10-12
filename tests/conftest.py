@@ -33,7 +33,9 @@ def initial_users() -> typing.List[User]:
 
 
 class UserRepository(resources.SqlAlchemyRepository[User]):
-    __resource_name__ = "user_repo"
+    @classmethod
+    def resource_name(cls) -> str:
+        return "user_repository"
 
     def __init__(self, session: orm.Session):
         self.session = session
