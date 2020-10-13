@@ -1,3 +1,5 @@
+import typing
+
 import pytest
 
 from lime_uow import *
@@ -12,63 +14,54 @@ class Recorder:
 
 
 class TestResource(Resource[Recorder]):
-    def __init__(self, name: str):
-        self._name = name
-        self._handle = Recorder()
+    def __init__(self):
+        self.handle = Recorder()
         super().__init__()
-
-    def close(self) -> None:
-        self._handle.events.append("close")
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    def open(self) -> Recorder:
-        self._handle.events.append("open")
-        return self._handle
 
     @classmethod
     def resource_name(cls) -> str:
         return cls.__name__
 
     def rollback(self) -> None:
-        self._handle.events.append("rollback")
+        self.handle.events.append("rollback")
 
     def save(self) -> None:
-        self._handle.events.append("save")
+        self.handle.events.append("save")
 
 
-def test_uow_raises_error_when_duplicate_resource_names_are_given():
+class TestUOW(UnitOfWork):
+    def __init__(self, /, *resource: resources.Resource):
+        super().__init__()
+        self._resources = list(resource)
+
+    def create_resources(self) -> typing.AbstractSet[ResourceSubclass]:
+        return self._resources
+
+
+def test_uow_raises_error_when_duplicate_resources_given():
     with pytest.raises(
         exceptions.DuplicateResourceNames,
         match="Resource names must be unique, but found the following duplicates: TestResource = 2",
     ):
-        UnitOfWork(
-            TestResource("a"),
-            TestResource("c"),
-        )
+        with TestUOW(TestResource(), TestResource()) as uow:
+            uow.save()
 
 
 def test_unit_of_work_save():
-    uow = UnitOfWork(TestResource("a"))
-    with uow.get_resource(TestResource) as resource:
-        resource.events.append("do_something_a")
+    uow = TestUOW(TestResource())
+    with uow:
+        r = uow.get_resource(TestResource)
         uow.save()
 
-    assert resource.events == ["open", "do_something_a", "save", "rollback", "close"]
+    assert r.handle.events == ["save", "rollback"]
 
 
 def test_unit_of_work_rollback():
-    uow = UnitOfWork(TestResource("a"))
-    with uow.get_resource(TestResource) as resource:
-        resource.do_something("do_something_a")
+    with TestUOW(TestResource()) as uow:
+        r = uow.get_resource(TestResource)
         uow.rollback()
 
-    assert resource.events == [
-        "open",
-        "do_something_a",
+    assert r.handle.events == [
         "rollback",
         "rollback",
-        "close",
     ]

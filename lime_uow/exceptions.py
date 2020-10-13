@@ -5,7 +5,7 @@ __all__ = (
     "DuplicateResourceNames",
     "InvalidResource",
     "MissingResourceError",
-    "NestingUnitsOfWorkNotAllowed",
+    "OutsideTransactionError",
     "RollbackError",
 )
 
@@ -35,16 +35,26 @@ class InvalidResource(LimeUoWException):
 
 
 class MissingResourceError(LimeUoWException):
-    def __init__(self, resource_name: str, /):
+    def __init__(
+        self, *, resource_name: str, available_resources: typing.Iterable[str]
+    ):
         self.resource_name = resource_name
-        msg = f"Could not locate a resource named {resource_name!r}"
+        msg = (
+            f"Could not locate a resource named {resource_name!r}.  "
+            f"Available resources include {', '.join(available_resources)}."
+        )
         super().__init__(msg)
 
 
-class NestingUnitsOfWorkNotAllowed(LimeUoWException):
+class NoCommonAncestor(LimeUoWException):
+    def __init__(self, message: str, /):
+        super().__init__(message)
+
+
+class OutsideTransactionError(LimeUoWException):
     def __init__(self):
         super().__init__(
-            "Attempted to nest a UnitOfWork instance inside another.  That is not supported."
+            "Attempted to access a UnitOfWork resource outside a with block."
         )
 
 

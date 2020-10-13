@@ -1,27 +1,45 @@
+import typing
+
 from lime_uow import *
 from tests.conftest import User, UserRepository
 
+from sqlalchemy import orm
 
-def test_unit_of_work_save(user_repo: UserRepository):
-    with UnitOfWork(user_repo) as uow:
-        with uow.get_resource(UserRepository) as repo:
-            repo.add(User(user_id=999, name="Steve"))
-            uow.save()
 
-    actual = user_repo.session.query(User).all()
-    assert actual == [
+class TestUnitOfWork(SqlAlchemyUnitOfWork):
+    def __init__(
+        self,
+        session_factory: orm.sessionmaker,
+    ):
+        super().__init__(session_factory)
+
+    def create_resources(self) -> typing.Set[resources.Resource[typing.Any]]:
+        return {
+            UserRepository(session=self.session)
+        }
+
+
+def test_unit_of_work_save(session_factory: orm.sessionmaker):
+    with TestUnitOfWork(session_factory) as uow:
+        repo = uow.get_resource(UserRepository)
+        repo.add(User(user_id=999, name="Steve"))
+        uow.save()
+
+    actual = session_factory().query(User).all()
+    expected = [
         User(user_id=1, name="Mark"),
         User(user_id=2, name="Mandie"),
         User(user_id=999, name="Steve"),
     ]
+    assert actual == expected
 
 
-def test_unit_of_work_rollback(user_repo: UserRepository):
-    with UnitOfWork(user_repo) as uow:
-        with uow.get_resource(UserRepository) as repo:
-            repo.add(User(999, "Mark"))
-            uow.rollback()
+def test_unit_of_work_rollback(session_factory: orm.sessionmaker):
+    with TestUnitOfWork(session_factory) as uow:
+        repo = uow.get_resource(UserRepository)
+        repo.add(User(999, "Mark"))
+        uow.rollback()
 
-    actual = user_repo.session.query(User).all()
+    actual = session_factory().query(User).all()
     expected = [User(user_id=1, name="Mark"), User(user_id=2, name="Mandie")]
     assert actual == expected

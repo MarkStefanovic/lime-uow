@@ -12,35 +12,13 @@ __all__ = (
     "SqlAlchemyRepository",
 )
 
+from lime_uow import exceptions
+
 T = typing.TypeVar("T", covariant=True)
 E = typing.TypeVar("E")
 
 
 class Resource(abc.ABC, typing.Generic[T]):
-    def __init__(self):
-        self._is_open = False
-
-    def __enter__(self):
-        self._is_open = True
-        return self.open()
-
-    def __exit__(self, *args):
-        self._is_open = False
-        self.rollback()
-        return self.close()
-
-    @abc.abstractmethod
-    def close(self) -> None:
-        raise NotImplementedError
-
-    @property
-    def is_open(self) -> bool:
-        return self._is_open
-
-    @abc.abstractmethod
-    def open(self) -> Resource[T]:
-        raise NotImplementedError
-
     @classmethod
     @abc.abstractmethod
     def resource_name(cls) -> str:
@@ -69,10 +47,10 @@ class Resource(abc.ABC, typing.Generic[T]):
             return not result
 
     def __hash__(self) -> int:
-        return hash(self.resource_name())
+        return hash(self.resource_name)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}: {self.resource_name()}"
+        return f"{self.__class__.__name__}: {self.__class__.resource_name()}"
 
 
 class Repository(Resource[E], abc.ABC, typing.Generic[E]):
@@ -107,10 +85,6 @@ class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
     def all(self) -> typing.Generator[E, None, None]:
         return self.session.query(self.entity_type).all()
 
-    def close(self) -> None:
-        pass
-        # self._session.close()
-
     def delete(self, item: E, /) -> E:
         self.session.delete(item)
         return item
@@ -123,16 +97,13 @@ class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
     def entity_type(self) -> typing.Type[E]:
         raise NotImplementedError
 
-    def open(self) -> SqlAlchemyRepository[E]:
-        return self
-
     @classmethod
     def resource_name(cls) -> str:
-        return next(
-            base.__name__
-            for base in cls.__bases__
-            if any(b is SqlAlchemyRepository for b in base.__bases__)
-        )
+        descendant = _get_next_descendant_of(cls=cls, ancestor=SqlAlchemyRepository)
+        if descendant is SqlAlchemyRepository:
+            return cls.__name__
+        else:
+            return descendant.__name__
 
     def rollback(self) -> None:
         self.session.rollback()
@@ -173,14 +144,6 @@ class DictRepository(Repository[E], abc.ABC, typing.Generic[E]):
 
         self.events: typing.List[typing.Tuple[str, typing.Dict[str, typing.Any]]] = []
 
-    def close(self) -> None:
-        self.events.append(("close", {}))
-        self._current_state = {}
-
-    def open(self) -> DictRepository[E]:
-        self.events = [("open", {})]
-        return self
-
     def rollback(self) -> None:
         self.events.append(("rollback", {}))
         self._current_state = self._previous_state.copy()
@@ -214,3 +177,17 @@ class DictRepository(Repository[E], abc.ABC, typing.Generic[E]):
     def get(self, item_id: typing.Any, /) -> E:
         self.events.append(("get", {"item_id": item_id}))
         return self._current_state[item_id]
+
+
+def _get_next_descendant_of(
+    cls: typing.Type[typing.Any], ancestor: typing.Type[typing.Any]
+) -> typing.Type[typing.Any]:
+    try:
+        return next(
+            c for c in cls.__mro__[1:] if ancestor in c.__mro__
+        )
+    except StopIteration:
+        raise exceptions.NoCommonAncestor(
+            f"Cannot find a common ancestor of {ancestor.__name__} for class {cls.__name__} in its "
+            f"MRO.  The {cls.__name__}'s MRO is as follows: {', '.join(c.__name__ for c in cls.__mro__)}."
+        )
