@@ -2,7 +2,7 @@ import typing
 
 import pytest
 
-from lime_uow import *
+from lime_uow import exceptions, resources, unit_of_work
 
 
 class Recorder:
@@ -13,7 +13,7 @@ class Recorder:
         self.events.append(action)
 
 
-class TestResource(Resource[Recorder]):
+class TestResource(resources.Resource[Recorder]):
     def __init__(self):
         self.handle = Recorder()
         super().__init__()
@@ -29,12 +29,12 @@ class TestResource(Resource[Recorder]):
         self.handle.events.append("save")
 
 
-class TestUOW(UnitOfWork):
-    def __init__(self, /, *resource: resources.Resource):
+class TestUOW(unit_of_work.UnitOfWork):
+    def __init__(self, /, *resource: resources.Resource[typing.Any]):
         super().__init__()
         self._resources = list(resource)
 
-    def create_resources(self) -> typing.AbstractSet[ResourceSubclass]:
+    def create_resources(self) -> typing.List[resources.Resource[typing.Any]]:  # type: ignore
         return self._resources
 
 

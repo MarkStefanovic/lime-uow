@@ -1,12 +1,12 @@
 import typing
 
-from lime_uow import *
+from lime_uow import resources, unit_of_work
 from tests.conftest import User, UserRepository
 
 from sqlalchemy import orm
 
 
-class TestUnitOfWork(SqlAlchemyUnitOfWork):
+class TestUnitOfWork(unit_of_work.SqlAlchemyUnitOfWork):
     def __init__(
         self,
         session_factory: orm.sessionmaker,

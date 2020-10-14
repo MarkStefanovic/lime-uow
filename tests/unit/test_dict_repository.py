@@ -1,15 +1,20 @@
-from tests.conftest import *
+import typing
+
+import pytest
+
+from lime_uow import resources
+from tests.conftest import User
 
 
-class DummyDictRepository(resources.DictRepository):
+class DummyDictRepository(resources.DictRepository[User]):
     def __init__(self, initial_users: typing.List[User]):
         super(DummyDictRepository, self).__init__(
             initial_values={user.user_id: user for user in initial_users},
             key_fn=lambda user: user.user_id,
         )
 
-    @property
-    def resource_name(self) -> str:
+    @classmethod
+    def resource_name(cls) -> str:
         return "dummy_dict_repository"
 
 

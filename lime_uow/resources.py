@@ -35,7 +35,7 @@ class Resource(abc.ABC, typing.Generic[T]):
     def __eq__(self, other: object) -> bool:
         if other.__class__ is self.__class__:
             # noinspection PyTypeChecker
-            return self.resource_name == typing.cast(Resource, other).resource_name
+            return self.resource_name == typing.cast(Resource[typing.Any], other).resource_name
         else:
             return NotImplemented
 

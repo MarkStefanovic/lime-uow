@@ -43,7 +43,7 @@ class UserRepository(AbstractUserRepository):
 
 
 class TestUnitOfWork(unit_of_work.SqlAlchemyUnitOfWork):
-    def create_resources(self) -> typing.AbstractSet[unit_of_work.ResourceSubclass]:
+    def create_resources(self) -> typing.AbstractSet[resources.Resource[typing.Any]]:
         return {UserRepository(self.session)}
 
 
