@@ -78,6 +78,9 @@ class Repository(Resource[E], abc.ABC, typing.Generic[E]):
 
 
 class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
+    def __init__(self, session: orm.Session):
+        self._session = session
+
     def add(self, item: E, /) -> E:
         self.session.add(item)
         return item
@@ -109,9 +112,8 @@ class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
         self.session.rollback()
 
     @property
-    @abc.abstractmethod
     def session(self) -> orm.Session:
-        raise NotImplementedError
+        return self._session
 
     def save(self) -> None:
         self.session.commit()
@@ -183,9 +185,7 @@ def _get_next_descendant_of(
     cls: typing.Type[typing.Any], ancestor: typing.Type[typing.Any]
 ) -> typing.Type[typing.Any]:
     try:
-        return next(
-            c for c in cls.__mro__[1:] if ancestor in c.__mro__
-        )
+        return next(c for c in cls.__mro__[1:] if ancestor in c.__mro__)
     except StopIteration:
         raise exceptions.NoCommonAncestor(
             f"Cannot find a common ancestor of {ancestor.__name__} for class {cls.__name__} in its "

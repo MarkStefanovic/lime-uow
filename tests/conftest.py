@@ -32,17 +32,11 @@ class AbstractUserRepository(resources.SqlAlchemyRepository[User], abc.ABC):
 
 class UserRepository(AbstractUserRepository):
     def __init__(self, session: orm.Session):
-        self._session = session
-
-        super().__init__()
+        super().__init__(session)
 
     @property
     def entity_type(self) -> typing.Type[User]:
         return User
-
-    @property
-    def session(self) -> orm.Session:
-        return self._session
 
     def get_first(self) -> User:
         return next(self.all())
