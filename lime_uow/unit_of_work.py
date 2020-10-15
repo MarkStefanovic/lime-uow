@@ -14,7 +14,6 @@ __all__ = (
 
 
 R = typing.TypeVar("R", bound=resources.Resource[typing.Any])
-ResourceType = typing.Callable[..., R]  # added ResourceType intermediate as a hack around mypy issue 5374
 
 
 class UnitOfWork(abc.ABC):
@@ -36,19 +35,11 @@ class UnitOfWork(abc.ABC):
         self.rollback()
         self.__resources = None
 
-    ## original version
-    # def get_resource(self, resource_type: typing.Type[R], /) -> R:
-    #     if self.__resources is None:
-    #         raise exceptions.OutsideTransactionError()
-    #     else:
-    #         return typing.cast(R, self.get_resource_by_name(resource_type.resource_name()))
-
-    # hack around issue: https://github.com/python/mypy/issues/5374
-    def get_resource(self, resource_type: ResourceType[R], /) -> R:
+    def get_resource(self, resource_type: typing.Type[R], /) -> R:
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
         else:
-            return typing.cast(R, self.get_resource_by_name(typing.cast(typing.Type[R], resource_type).resource_name()))
+            return typing.cast(R, self.get_resource_by_name(resource_type.resource_name()))
 
     def get_resource_by_name(self, resource_name: str, /) -> resources.Resource[typing.Any]:
         if self.__resources is None:

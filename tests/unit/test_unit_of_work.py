@@ -29,7 +29,7 @@ class DumyUOW(unit_of_work.UnitOfWork):
 
 def test_sqlalchemy_repository_get_resource_by_type_works():
     with DumyUOW() as uow:
-        repo = uow.get_resource(AbstractDummy)
+        repo = uow.get_resource(AbstractDummy)  # type: ignore  # see mypy issue 5374
 
     assert type(repo) is DummyImpl
 
