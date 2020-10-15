@@ -1,19 +1,41 @@
-from tests.conftest import *
+import abc
+
+import typing
+
+from lime_uow import resources, unit_of_work
 
 
-def test_sqlalchemy_repository_get_resource_by_type_works(
-    user_uow: TestUnitOfWork,
-):
-    with user_uow as uow:
-        repo = uow.get_resource(AbstractUserRepository)
-
-    assert type(repo) is UserRepository
+class AbstractDummy(resources.Resource[typing.Any], abc.ABC):
+    @abc.abstractmethod
+    def do_something(self):
+        raise NotImplementedError
 
 
-def test_sqlalchemy_repository_get_resource_by_name_works(
-    user_uow: TestUnitOfWork,
-):
-    with user_uow as uow:
-        repo = uow.get_resource_by_name("AbstractUserRepository")
+class DummyImpl(AbstractDummy):
+    def rollback(self) -> None:
+        pass
 
-    assert type(repo) is UserRepository
+    def save(self) -> None:
+        pass
+
+    def do_something(self):
+        print("LOUD NOISES!")
+
+
+class DumyUOW(unit_of_work.UnitOfWork):
+    def create_resources(self) -> typing.AbstractSet[resources.Resource[typing.Any]]:
+        return {DummyImpl()}
+
+
+def test_sqlalchemy_repository_get_resource_by_type_works():
+    with DumyUOW() as uow:
+        repo = uow.get_resource(AbstractDummy)
+
+    assert type(repo) is DummyImpl
+
+
+def test_sqlalchemy_repository_get_resource_by_name_works():
+    with DumyUOW() as uow:
+        repo = uow.get_resource_by_name("AbstractDummy")
+
+    assert type(repo) is DummyImpl

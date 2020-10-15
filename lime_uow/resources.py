@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import inspect
 import typing
 
 from sqlalchemy import orm
@@ -20,9 +21,11 @@ E = typing.TypeVar("E")
 
 class Resource(abc.ABC, typing.Generic[T]):
     @classmethod
-    @abc.abstractmethod
     def resource_name(cls) -> str:
-        raise NotImplementedError
+        if inspect.isabstract(cls):
+            return cls.__name__
+        else:
+            return _get_next_descendant_of(cls, ancestor=Resource).__name__
 
     @abc.abstractmethod
     def rollback(self) -> None:
@@ -99,14 +102,6 @@ class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
     @abc.abstractmethod
     def entity_type(self) -> typing.Type[E]:
         raise NotImplementedError
-
-    @classmethod
-    def resource_name(cls) -> str:
-        descendant = _get_next_descendant_of(cls=cls, ancestor=SqlAlchemyRepository)
-        if descendant is SqlAlchemyRepository:
-            return cls.__name__
-        else:
-            return descendant.__name__
 
     def rollback(self) -> None:
         self.session.rollback()
