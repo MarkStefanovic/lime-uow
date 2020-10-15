@@ -13,7 +13,8 @@ __all__ = (
 )
 
 
-R = typing.TypeVar("R", bound=resources.Resource[typing.Any])
+R = typing.TypeVar("R", bound=resources.Resource[typing.Union[object, typing.Any]])  # hack around issue: https://github.com/python/mypy/issues/5374
+# R = typing.TypeVar("R", bound=resources.Resource[typing.Any])
 
 
 class UnitOfWork(abc.ABC):
