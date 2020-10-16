@@ -89,7 +89,7 @@ def test_dummy_repository_delete_method(dummy_repo: TestDummyRepository):
 
 def test_dummy_repository_delete_all_method(dummy_repo: TestDummyRepository):
     dummy_repo.delete_all()
-    expected = []
+    expected: typing.List[User] = []
     actual = dummy_repo.all()
     assert actual == expected
     assert dummy_repo.events == [

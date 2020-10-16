@@ -159,12 +159,12 @@ class DummyRepository(Repository[E], typing.Generic[E]):
     def __init__(
         self,
         *,
-        initial_values: typing.Iterable[E],
         key_fn: typing.Callable[[E], typing.Hashable],
+        initial_values: typing.Optional[typing.Iterable[E]] = None,
     ):
         super().__init__()
 
-        self._current_state: typing.List[E] = list(initial_values)
+        self._current_state: typing.List[E] = list(initial_values or [])
         self._previous_state: typing.List[E] = self._current_state.copy()
         self._key_fn = key_fn
 
@@ -205,7 +205,7 @@ class DummyRepository(Repository[E], typing.Generic[E]):
 
     def set_all(self, items: typing.Collection[E], /) -> typing.Collection[E]:
         self.events.append(("set_all", {"items": items}))
-        self._current_state = items
+        self._current_state = list(items)
         return items
 
     def update(self, item: E, /) -> E:
