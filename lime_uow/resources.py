@@ -132,13 +132,16 @@ class DictRepository(Repository[E], abc.ABC, typing.Generic[E]):
     def __init__(
         self,
         *,
-        initial_values: typing.Dict[typing.Hashable, E],
+        initial_values: typing.Iterable[E],
         key_fn: typing.Callable[[E], typing.Hashable],
     ):
         super().__init__()
 
-        self._previous_state = initial_values
-        self._current_state = initial_values.copy()
+        self._current_state: typing.Dict[typing.Hashable, E] = {
+            key_fn(v): v
+            for v in initial_values
+        }
+        self._previous_state: typing.Dict[typing.Hashable, E] = self._current_state.copy()
         self._key_fn = key_fn
 
         self.events: typing.List[typing.Tuple[str, typing.Dict[str, typing.Any]]] = []
