@@ -1,8 +1,9 @@
 import abc
 
 import pytest
+import typing
 
-from lime_uow import exceptions
+from lime_uow import exceptions, resources
 from lime_uow.resources import _get_next_descendant_of  # noqa
 
 

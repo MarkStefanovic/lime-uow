@@ -34,10 +34,6 @@ class UserRepository(AbstractUserRepository):
     def __init__(self, session: orm.Session):
         super().__init__(session)
 
-    @property
-    def entity_type(self) -> typing.Type[User]:
-        return User
-
     def get_first(self) -> User:
         return next(self.all())
 

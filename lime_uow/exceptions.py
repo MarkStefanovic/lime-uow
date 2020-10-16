@@ -41,7 +41,7 @@ class MissingResourceError(LimeUoWException):
         self.resource_name = resource_name
         msg = (
             f"Could not locate a resource named {resource_name!r}.  "
-            f"Available resources include {', '.join(available_resources)}."
+            f"Available resources include the following: {', '.join(available_resources)}."
         )
         super().__init__(msg)
 
