@@ -95,7 +95,7 @@ class Repository(Resource[E], abc.ABC, typing.Generic[E]):
         raise NotImplementedError
 
 
-class SqlAlchemyRepository(Repository[E], typing.Generic[E]):
+class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
     def __init__(self, session: orm.Session, /):
         self._session = session
         self._entity_type: typing.Optional[typing.Type[E]] = None
@@ -122,10 +122,9 @@ class SqlAlchemyRepository(Repository[E], typing.Generic[E]):
         return self.session.query(self.entity_type).get(item_id)
 
     @property
+    @abc.abstractmethod
     def entity_type(self) -> typing.Type[E]:
-        if self._entity_type is None:
-            self._entity_type = typing.get_args(self.__class__)[0]
-        return self._entity_type
+        raise NotImplementedError
 
     def rollback(self) -> None:
         self.session.rollback()
