@@ -95,6 +95,16 @@ class Repository(Resource[E], abc.ABC, typing.Generic[E]):
         raise NotImplementedError
 
 
+class SharedResource(Resource[T], abc.ABC, typing.Generic[T]):
+    @abc.abstractmethod
+    def open(self) -> T:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def close(self) -> None:
+        raise NotImplementedError
+
+
 class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
     def __init__(self, session: orm.Session, /):
         self._session = session
@@ -222,6 +232,34 @@ class DummyRepository(Repository[E], typing.Generic[E]):
         return next(o for o in self._current_state if self._key_fn(o) == item_id)
 
 
+class SqlAlchemySession(SharedResource[typing.Any]):
+    def __init__(self, session_factory: orm.sessionmaker, /):
+        self._session_factory = session_factory
+        self._session: typing.Optional[orm.Session] = None
+
+    def open(self) -> orm.Session:
+        self._session = self._session_factory()
+        return self._session
+
+    def close(self) -> None:
+        if self._session:
+            self._session.close()
+            self._session = None
+
+    def rollback(self) -> None:
+        if self._session is None:
+            raise exceptions.RollbackError(
+                resource_name=self.resource_name(),
+                message="Attempted to rollback a closed session.",
+            )
+        else:
+            self._session.rollback()
+
+    def save(self) -> None:
+        if self._session:
+            self._session.commit()
+
+
 def _get_next_descendant_of(
     cls: typing.Type[typing.Any], ancestor: typing.Type[typing.Any]
 ) -> typing.Type[typing.Any]:
@@ -230,5 +268,6 @@ def _get_next_descendant_of(
     except StopIteration:
         raise exceptions.NoCommonAncestor(
             f"Cannot find a common ancestor of {ancestor.__name__} for class {cls.__name__} in its "
-            f"MRO.  The {cls.__name__}'s MRO is as follows: {', '.join(c.__name__ for c in cls.__mro__)}."
+            f"MRO.  The {cls.__name__}'s MRO is as follows: "
+            f"{', '.join(c.__name__ for c in cls.__mro__)}."
         )

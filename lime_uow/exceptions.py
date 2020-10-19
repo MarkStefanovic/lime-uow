@@ -59,5 +59,16 @@ class OutsideTransactionError(LimeUoWException):
 
 
 class RollbackError(LimeUoWException):
-    def __init__(self, message: str, /):
+    def __init__(self, *, resource_name: str, message: str):
+        self.resource_name = resource_name
         super().__init__(message)
+
+
+class RollbackErrors(LimeUoWException):
+    def __init__(self, *rollback_errors: RollbackError):
+        self.rollback_errors = rollback_errors
+        err_msg = (
+            f"The following errors occurred while performing a rollback: "
+            f"{'; '.join(f'[{e.resource_name}] {e.message}' for e in rollback_errors)}."
+        )
+        super().__init__(err_msg)

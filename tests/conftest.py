@@ -1,12 +1,12 @@
 import abc
 import dataclasses
+import typing
 
 import pytest
 import sqlalchemy as sa
-import typing
 from sqlalchemy import orm
 
-from lime_uow import resources, unit_of_work
+from lime_uow import resources
 
 metadata = sa.MetaData()
 
@@ -42,11 +42,6 @@ class UserRepository(AbstractUserRepository):
         return next(self.all())
 
 
-class TestUnitOfWork(unit_of_work.SqlAlchemyUnitOfWork):
-    def create_resources(self) -> typing.AbstractSet[resources.Resource[typing.Any]]:
-        return {UserRepository(self.session)}
-
-
 @pytest.fixture
 def engine() -> sa.engine.Engine:
     engine = sa.engine.create_engine("sqlite://", echo=True)
@@ -73,8 +68,3 @@ def session_factory(engine) -> orm.sessionmaker:
 @pytest.fixture
 def user_repo(session_factory: orm.sessionmaker) -> UserRepository:
     return UserRepository(session_factory())
-
-
-@pytest.fixture
-def user_uow(session_factory: orm.sessionmaker) -> TestUnitOfWork:
-    return TestUnitOfWork(session_factory)
