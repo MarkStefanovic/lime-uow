@@ -342,3 +342,10 @@ def _get_next_descendant_of(
             f"MRO.  The {cls.__name__}'s MRO is as follows: "
             f"{', '.join(c.__name__ for c in cls.__mro__)}."
         )
+
+
+def check_for_duplicate_resource_names(rs: typing.Iterable[Resource[typing.Any]], /) -> None:
+    names = [r.__class__.resource_name() for r in rs]
+    duplicate_names = {name: ct for name in names if (ct := names.count(name)) > 1}
+    if duplicate_names:
+        raise exceptions.DuplicateResourceNames(duplicate_names)

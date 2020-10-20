@@ -72,3 +72,13 @@ class RollbackErrors(LimeUoWException):
             f"{'; '.join(f'[{e.resource_name}] {e.message}' for e in rollback_errors)}."
         )
         super().__init__(err_msg)
+
+
+class SharedResourcesAlreadyOpen(LimeUoWException):
+    def __init__(self):
+        super().__init__("SharedResources are already open.")
+
+
+class SharedResourcesClosed(LimeUoWException):
+    def __init__(self):
+        super().__init__("Attempted to access SharedResources when it is closed.")

@@ -3,12 +3,10 @@ from __future__ import annotations
 import abc
 import typing
 
-
-from lime_uow import resources, exceptions
+from lime_uow import exceptions, resources, shared_resource_manager
 
 __all__ = (
     "PlaceholderUnitOfWork",
-    "SharedResources",
     "UnitOfWork",
 )
 
@@ -18,17 +16,20 @@ T = typing.TypeVar("T")
 
 
 class UnitOfWork(abc.ABC):
-    def __init__(self):
+    def __init__(
+        self,
+        /,
+        shared_resources: shared_resource_manager.SharedResources = shared_resource_manager.PlaceholderSharedResources(),
+    ):
         self.__resources: typing.Optional[
             typing.Set[resources.Resource[typing.Any]]
         ] = None
-        self.__shared_resources: typing.Optional[SharedResources] = None
+        self.__shared_resource_manager = shared_resources
         self.__resources_validated = False
 
     def __enter__(self) -> UnitOfWork:
-        self.__shared_resources = SharedResources(*self.create_shared_resources())
-        fresh_resources = self.create_resources(self.__shared_resources)
-        _check_for_duplicate_resource_names(fresh_resources)
+        fresh_resources = self.create_resources(self.__shared_resource_manager)
+        resources.check_for_duplicate_resource_names(fresh_resources)
         self.__resources = set(fresh_resources)
         self.__resources_validated = True
         return self
@@ -40,9 +41,6 @@ class UnitOfWork(abc.ABC):
         except exceptions.RollbackErrors as e:
             errors += e.rollback_errors
         self.__resources = None
-        assert self.__shared_resources is not None
-        self.__shared_resources.close()
-        self.__shared_resources = None
         if errors:
             raise exceptions.RollbackErrors(*errors)
 
@@ -74,14 +72,8 @@ class UnitOfWork(abc.ABC):
 
     @abc.abstractmethod
     def create_resources(
-        self, shared_resources: SharedResources
+        self, shared_resources: shared_resource_manager.SharedResources
     ) -> typing.Iterable[resources.Resource[typing.Any]]:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def create_shared_resources(
-        self,
-    ) -> typing.Iterable[resources.SharedResource[typing.Any]]:
         raise NotImplementedError
 
     def rollback(self):
@@ -118,57 +110,9 @@ class UnitOfWork(abc.ABC):
 
 class PlaceholderUnitOfWork(UnitOfWork):
     def __init__(self):
-        super().__init__()
+        super().__init__(shared_resource_manager.PlaceholderSharedResources())
 
     def create_resources(
-        self, shared_resources: SharedResources
+        self, shared_resources: shared_resource_manager.SharedResources
     ) -> typing.List[resources.Resource[typing.Any]]:
         return []
-
-    def create_shared_resources(
-        self,
-    ) -> typing.Iterable[resources.SharedResource[typing.Any]]:
-        return []
-
-
-class SharedResources:
-    def __init__(self, /, *shared_resource: resources.SharedResource[typing.Any]):
-        _check_for_duplicate_resource_names(shared_resource)
-        self._shared_resources = list(shared_resource)
-        self._handles: typing.Dict[str, typing.Any] = {}
-
-    def close(self):
-        for resource in self._shared_resources:
-            resource.close()
-        self._shared_resources = []
-        self._handles = {}
-
-    def get(self, shared_resource_type: typing.Type[resources.SharedResource[T]]) -> T:
-        if shared_resource_type.resource_name() in self._handles.keys():
-            return self._handles[shared_resource_type.resource_name()]
-        else:
-            try:
-                resource = next(
-                    resource
-                    for resource in self._shared_resources
-                    if resource.resource_name() == shared_resource_type.resource_name()
-                )
-                handle = resource.open()
-                self._handles[resource.resource_name()] = handle
-                return handle
-            except StopIteration:
-                raise exceptions.MissingResourceError(
-                    resource_name=shared_resource_type.resource_name(),
-                    available_resources={
-                        r.resource_name() for r in self._shared_resources
-                    },
-                )
-            except Exception as e:
-                raise exceptions.LimeUoWException(str(e))
-
-
-def _check_for_duplicate_resource_names(rs: typing.Iterable[R], /):
-    names = [r.__class__.resource_name() for r in rs]
-    duplicate_names = {name: ct for name in names if (ct := names.count(name)) > 1}
-    if duplicate_names:
-        raise exceptions.DuplicateResourceNames(duplicate_names)

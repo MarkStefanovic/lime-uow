@@ -2,7 +2,7 @@ import typing
 
 import pytest
 
-from lime_uow import exceptions, resources, unit_of_work
+from lime_uow import exceptions, resources, shared_resource_manager, unit_of_work
 
 
 class Recorder:
@@ -50,35 +50,29 @@ class TestSharedResource(resources.SharedResource[str]):
 
 class TestUOW(unit_of_work.UnitOfWork):
     def __init__(self):
-        super().__init__()
+        super().__init__(
+            shared_resource_manager.SharedResources(TestSharedResource("test"))
+        )
 
     def create_resources(
-        self, shared_resources: unit_of_work.SharedResources
+        self, shared_resources: shared_resource_manager.SharedResources
     ) -> typing.Iterable[resources.Resource[typing.Any]]:
         return [TestResource(shared_resources.get(TestSharedResource))]
-
-    def create_shared_resources(
-        self,
-    ) -> typing.Iterable[resources.SharedResource[typing.Any]]:
-        return [TestSharedResource("test")]
 
 
 class DuplicateJobTestUOW(unit_of_work.UnitOfWork):
     def __init__(self):
-        super().__init__()
+        super().__init__(
+            shared_resource_manager.SharedResources(TestSharedResource("test"))
+        )
 
     def create_resources(
-        self, shared_resources: unit_of_work.SharedResources
+        self, shared_resources: shared_resource_manager.SharedResources
     ) -> typing.Iterable[resources.Resource[typing.Any]]:
         return [
             TestResource(shared_resources.get(TestSharedResource)),
             TestResource(shared_resources.get(TestSharedResource)),
         ]
-
-    def create_shared_resources(
-        self,
-    ) -> typing.Iterable[resources.SharedResource[typing.Any]]:
-        return [TestSharedResource("test")]
 
 
 def test_uow_raises_error_when_duplicate_resources_given():
