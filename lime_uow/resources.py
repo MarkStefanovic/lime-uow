@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import abc
 import inspect
+import os
+import pathlib
+import tempfile
 import typing
 
 from sqlalchemy import orm
@@ -10,6 +13,7 @@ __all__ = (
     "DummyRepository",
     "Repository",
     "Resource",
+    "SharedResource",
     "SqlAlchemyRepository",
 )
 
@@ -258,6 +262,69 @@ class SqlAlchemySession(SharedResource[typing.Any]):
     def save(self) -> None:
         if self._session:
             self._session.commit()
+
+
+class TempFileSharedResource(SharedResource[typing.IO[bytes]]):
+    def __init__(
+        self,
+        *,
+        prefix: typing.Optional[str] = None,
+        file_extension: typing.Optional[str] = None,
+    ):
+        self._prefix = prefix
+        self._file_extension = file_extension
+
+        self._file_handle: typing.Optional[typing.IO[bytes]] = None
+        self._file_path: typing.Optional[pathlib.Path] = None
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def clear(self):
+        self._file_handle.seek(0, 0)  # go to beginning of file
+        self._file_handle.truncate()
+
+    def close(self) -> None:
+        assert self._file_handle is not None
+        self._file_handle.close()
+        os.unlink(self.file_path)
+
+    @property
+    def file_path(self) -> pathlib.Path:
+        if self._file_path is None:
+            self._file_path = pathlib.Path(self._file_handle.name)
+        return self._file_path
+
+    def open(self) -> typing.IO[bytes]:
+        ext = f".{self._file_extension}" if self._file_extension else None
+        self._file_handle: typing.IO[bytes] = tempfile.NamedTemporaryFile(
+            prefix=self._prefix,
+            suffix=ext,
+            delete=False,
+        )
+        return self._file_handle
+
+    def all(self) -> str:
+        assert self._file_handle is not None
+        self._file_handle.seek(0, 0)  # go to beginning of file
+        content = self._file_handle.read()
+        self._file_handle.seek(0, 2)  # go to end of file
+        return content.decode()
+
+    def rollback(self) -> None:
+        pass
+
+    def save(self) -> None:
+        assert self._file_handle is not None
+        self._file_handle.flush()
+
+    def add(self, content: str) -> None:
+        assert self._file_handle is not None
+        self._file_handle.write(content.encode())
 
 
 def _get_next_descendant_of(
