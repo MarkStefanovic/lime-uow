@@ -7,6 +7,7 @@ import typing
 from lime_uow import resources, exceptions
 
 __all__ = (
+    "PlaceholderUnitOfWork",
     "SharedResources",
     "UnitOfWork",
 )
@@ -113,6 +114,21 @@ class UnitOfWork(abc.ABC):
         except:
             self.rollback()
             raise
+
+
+class PlaceholderUnitOfWork(UnitOfWork):
+    def __init__(self):
+        super().__init__()
+
+    def create_resources(
+        self, shared_resources: SharedResources
+    ) -> typing.List[resources.Resource[typing.Any]]:
+        return []
+
+    def create_shared_resources(
+        self,
+    ) -> typing.Iterable[resources.SharedResource[typing.Any]]:
+        return []
 
 
 class SharedResources:
