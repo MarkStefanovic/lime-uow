@@ -285,23 +285,28 @@ class TempFileSharedResource(SharedResource[typing.IO[bytes]]):
         self.close()
 
     def clear(self):
-        self._file_handle.seek(0, 0)  # go to beginning of file
-        self._file_handle.truncate()
+        self.handle.seek(0, 0)  # go to beginning of file
+        self.handle.truncate()
 
     def close(self) -> None:
-        assert self._file_handle is not None
-        self._file_handle.close()
+        self.handle.close()
         os.unlink(self.file_path)
+
+    @property
+    def handle(self) -> typing.IO[bytes]:
+        if self._file_handle is None:
+            self.open()
+        return self._file_handle  # type: ignore
 
     @property
     def file_path(self) -> pathlib.Path:
         if self._file_path is None:
-            self._file_path = pathlib.Path(self._file_handle.name)
+            self._file_path = pathlib.Path(self.handle.name)
         return self._file_path
 
     def open(self) -> typing.IO[bytes]:
         ext = f".{self._file_extension}" if self._file_extension else None
-        self._file_handle: typing.IO[bytes] = tempfile.NamedTemporaryFile(
+        self._file_handle = tempfile.NamedTemporaryFile(
             prefix=self._prefix,
             suffix=ext,
             delete=False,
@@ -309,22 +314,19 @@ class TempFileSharedResource(SharedResource[typing.IO[bytes]]):
         return self._file_handle
 
     def all(self) -> str:
-        assert self._file_handle is not None
-        self._file_handle.seek(0, 0)  # go to beginning of file
-        content = self._file_handle.read()
-        self._file_handle.seek(0, 2)  # go to end of file
+        self.handle.seek(0, 0)  # go to beginning of file
+        content = self.handle.read()
+        self.handle.seek(0, 2)  # go to end of file
         return content.decode()
 
     def rollback(self) -> None:
         pass
 
     def save(self) -> None:
-        assert self._file_handle is not None
-        self._file_handle.flush()
+        self.handle.flush()
 
     def add(self, content: str) -> None:
-        assert self._file_handle is not None
-        self._file_handle.write(content.encode())
+        self.handle.write(content.encode())
 
 
 def _get_next_descendant_of(
