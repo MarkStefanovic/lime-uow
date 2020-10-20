@@ -15,6 +15,8 @@ __all__ = (
     "Resource",
     "SharedResource",
     "SqlAlchemyRepository",
+    "SqlAlchemySession",
+    "TempFileSharedResource",
 )
 
 from lime_uow import exceptions
