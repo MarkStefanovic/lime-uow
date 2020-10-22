@@ -235,10 +235,14 @@ class DummyRepository(Repository[E], abc.ABC, typing.Generic[E]):
         return next(o for o in self._current_state if self._key_fn(o) == item_id)
 
 
-class SqlAlchemySession(SharedResource[typing.Any], abc.ABC):
+class SqlAlchemySession(SharedResource[orm.Session]):
     def __init__(self, session_factory: orm.sessionmaker, /):
         self._session_factory = session_factory
         self._session: typing.Optional[orm.Session] = None
+
+    @classmethod
+    def interface(cls) -> typing.Type[SqlAlchemySession]:
+        return cls
 
     def open(self) -> orm.Session:
         self._session = self._session_factory()
