@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import inspect
 import typing
 
 from lime_uow import exceptions, resources, shared_resource_manager
@@ -48,10 +49,14 @@ class UnitOfWork(abc.ABC):
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
         else:
+            if inspect.isabstract(resource_type):
+                interface_name = resource_type.__name__
+            else:
+                interface_name = resource_type.interface().__name__
             implementation = next(
                 resource
                 for resource in self.__resources
-                if resource.interface().__name__ == resource_type.__name__
+                if resource.interface().__name__ == interface_name
             )
             return typing.cast(R, implementation)
 
