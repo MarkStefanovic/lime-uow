@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 import pytest
@@ -20,8 +22,8 @@ class TestResource(resources.Resource[Recorder]):
         super().__init__()
 
     @classmethod
-    def resource_name(cls) -> str:
-        return cls.__name__
+    def interface(cls) -> typing.Type[TestResource]:
+        return cls
 
     def rollback(self) -> None:
         self.handle.events.append("rollback")
@@ -34,6 +36,10 @@ class TestSharedResource(resources.SharedResource[str]):
     def __init__(self, value: str):
         self.value = value
         self._prior_value = value
+
+    @classmethod
+    def interface(cls) -> typing.Type[TestSharedResource]:
+        return cls
 
     def open(self) -> str:
         return self.value
@@ -77,7 +83,7 @@ class DuplicateJobTestUOW(unit_of_work.UnitOfWork):
 
 def test_uow_raises_error_when_duplicate_resources_given():
     with pytest.raises(
-        exceptions.DuplicateResourceNames,
+        exceptions.MultipleRegisteredImplementations,
         match="Resource names must be unique, but found the following duplicates: TestResource = 2",
     ):
         with DuplicateJobTestUOW() as uow:

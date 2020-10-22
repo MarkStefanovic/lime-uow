@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-import inspect
 import os
 import pathlib
 import tempfile
@@ -27,11 +26,9 @@ E = typing.TypeVar("E")
 
 class Resource(abc.ABC, typing.Generic[T]):
     @classmethod
-    def resource_name(cls) -> str:
-        if inspect.isabstract(cls):
-            return cls.__name__
-        else:
-            return _get_next_descendant_of(cls, ancestor=Resource).__name__
+    @abc.abstractmethod
+    def interface(cls) -> typing.Type[Resource[T]]:
+        raise NotImplementedError
 
     @abc.abstractmethod
     def rollback(self) -> None:
@@ -45,8 +42,8 @@ class Resource(abc.ABC, typing.Generic[T]):
         if other.__class__ is self.__class__:
             # noinspection PyTypeChecker
             return (
-                self.resource_name
-                == typing.cast(Resource[typing.Any], other).resource_name
+                self.__class__.interface()
+                == typing.cast(Resource[typing.Any], other).__class__.interface()
             )
         else:
             return NotImplemented
@@ -59,10 +56,10 @@ class Resource(abc.ABC, typing.Generic[T]):
             return not result
 
     def __hash__(self) -> int:
-        return hash(self.resource_name)
+        return hash(self.__class__.interface())
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}: {self.__class__.resource_name()}"
+        return f"{self.__class__.__name__}: {self.__class__.interface()}"
 
 
 class Repository(Resource[E], abc.ABC, typing.Generic[E]):
@@ -165,7 +162,7 @@ class SqlAlchemyRepository(Repository[E], abc.ABC, typing.Generic[E]):
         return self.session.query(self.entity_type).filter(predicate).all()
 
 
-class DummyRepository(Repository[E], typing.Generic[E]):
+class DummyRepository(Repository[E], abc.ABC, typing.Generic[E]):
     """Repository implementation based on a dictionary
 
     This exists primarily to make testing in client code simpler.  It was not designed for efficiency.
@@ -238,7 +235,7 @@ class DummyRepository(Repository[E], typing.Generic[E]):
         return next(o for o in self._current_state if self._key_fn(o) == item_id)
 
 
-class SqlAlchemySession(SharedResource[typing.Any]):
+class SqlAlchemySession(SharedResource[typing.Any], abc.ABC):
     def __init__(self, session_factory: orm.sessionmaker, /):
         self._session_factory = session_factory
         self._session: typing.Optional[orm.Session] = None
@@ -255,7 +252,6 @@ class SqlAlchemySession(SharedResource[typing.Any]):
     def rollback(self) -> None:
         if self._session is None:
             raise exceptions.RollbackError(
-                resource_name=self.resource_name(),
                 message="Attempted to rollback a closed session.",
             )
         else:
@@ -300,6 +296,10 @@ class TempFileSharedResource(SharedResource[typing.IO[bytes]]):
             self.open()
         return self._file_handle  # type: ignore
 
+    @classmethod
+    def interface(cls) -> typing.Type[TempFileSharedResource]:
+        return cls
+
     @property
     def file_path(self) -> pathlib.Path:
         if self._file_path is None:
@@ -331,21 +331,10 @@ class TempFileSharedResource(SharedResource[typing.IO[bytes]]):
         self.handle.write(content.encode())
 
 
-def _get_next_descendant_of(
-    cls: typing.Type[typing.Any], ancestor: typing.Type[typing.Any]
-) -> typing.Type[typing.Any]:
-    try:
-        return next(c for c in cls.__mro__[1:] if ancestor in c.__mro__)
-    except StopIteration:
-        raise exceptions.NoCommonAncestor(
-            f"Cannot find a common ancestor of {ancestor.__name__} for class {cls.__name__} in its "
-            f"MRO.  The {cls.__name__}'s MRO is as follows: "
-            f"{', '.join(c.__name__ for c in cls.__mro__)}."
-        )
-
-
-def check_for_duplicate_resource_names(rs: typing.Iterable[Resource[typing.Any]], /) -> None:
-    names = [r.__class__.resource_name() for r in rs]
+def check_for_ambiguous_implementations(
+    rs: typing.Iterable[Resource[typing.Any]], /
+) -> None:
+    names = [r.__class__.interface().__name__ for r in rs]
     duplicate_names = {name: ct for name in names if (ct := names.count(name)) > 1}
     if duplicate_names:
-        raise exceptions.DuplicateResourceNames(duplicate_names)
+        raise exceptions.MultipleRegisteredImplementations(duplicate_names)

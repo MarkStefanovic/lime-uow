@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 import pytest
@@ -12,6 +14,10 @@ class TestDummyRepository(resources.DummyRepository[User]):
             initial_values=initial_users,
             key_fn=lambda user: user.user_id,
         )
+
+    @classmethod
+    def interface(cls) -> typing.Type[TestDummyRepository]:
+        return cls
 
     @classmethod
     def resource_name(cls) -> str:

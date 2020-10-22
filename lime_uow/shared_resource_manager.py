@@ -14,7 +14,7 @@ T = typing.TypeVar("T")
 
 class SharedResources:
     def __init__(self, /, *shared_resource: resources.SharedResource[typing.Any]):
-        resources.check_for_duplicate_resource_names(shared_resource)
+        resources.check_for_ambiguous_implementations(shared_resource)
         self.__shared_resources = list(shared_resource)
         self.__handles: typing.Dict[str, typing.Any] = {}
         self.__opened = False
@@ -44,23 +44,23 @@ class SharedResources:
     def get(self, shared_resource_type: typing.Type[resources.SharedResource[T]]) -> T:
         if self.__closed:
             raise exceptions.SharedResourcesClosed()
-        if shared_resource_type.resource_name() in self.__handles.keys():
-            return self.__handles[shared_resource_type.resource_name()]
+        if shared_resource_type.interface() in self.__handles.keys():
+            return self.__handles[shared_resource_type.interface().__name__]
         else:
             try:
                 resource = next(
                     resource
                     for resource in self.__shared_resources
-                    if resource.resource_name() == shared_resource_type.resource_name()
+                    if resource.interface() == shared_resource_type.interface()
                 )
                 handle = resource.open()
-                self.__handles[resource.resource_name()] = handle
+                self.__handles[resource.interface().__name__] = handle
                 return handle
             except StopIteration:
                 raise exceptions.MissingResourceError(
-                    resource_name=shared_resource_type.resource_name(),
+                    resource_name=shared_resource_type.interface().__name__,
                     available_resources={
-                        r.resource_name() for r in self.__shared_resources
+                        r.interface().__name__ for r in self.__shared_resources
                     },
                 )
             except Exception as e:

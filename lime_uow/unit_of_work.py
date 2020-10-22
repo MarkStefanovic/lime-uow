@@ -29,7 +29,7 @@ class UnitOfWork(abc.ABC):
 
     def __enter__(self) -> UnitOfWork:
         fresh_resources = self.create_resources(self.__shared_resource_manager)
-        resources.check_for_duplicate_resource_names(fresh_resources)
+        resources.check_for_ambiguous_implementations(fresh_resources)
         self.__resources = set(fresh_resources)
         self.__resources_validated = True
         return self
@@ -48,27 +48,12 @@ class UnitOfWork(abc.ABC):
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
         else:
-            return typing.cast(
-                R, self.get_resource_by_name(resource_type.resource_name())
+            implementation = next(
+                resource
+                for resource in self.__resources
+                if resource.interface().__name__ == resource_type.__name__
             )
-
-    def get_resource_by_name(
-        self, resource_name: str, /
-    ) -> resources.Resource[typing.Any]:
-        if self.__resources is None:
-            raise exceptions.OutsideTransactionError()
-        else:
-            try:
-                return next(
-                    resource
-                    for resource in self.__resources
-                    if resource.resource_name() == resource_name
-                )
-            except StopIteration:
-                raise exceptions.MissingResourceError(
-                    resource_name=resource_name,
-                    available_resources={r.resource_name() for r in self.__resources},
-                )
+            return typing.cast(R, implementation)
 
     @abc.abstractmethod
     def create_resources(
@@ -87,8 +72,7 @@ class UnitOfWork(abc.ABC):
                 except Exception as e:
                     errors.append(
                         exceptions.RollbackError(
-                            resource_name=resource.resource_name(),
-                            message=str(e),
+                            message=f"An error occurred while rolling back {self.__class__.__name__}: {e}",
                         )
                     )
 

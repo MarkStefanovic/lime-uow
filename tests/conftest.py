@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import dataclasses
 import typing
@@ -40,6 +42,10 @@ class UserRepository(AbstractUserRepository):
 
     def get_first(self) -> User:
         return next(self.all())
+
+    @classmethod
+    def interface(cls) -> typing.Type[UserRepository]:
+        return cls
 
 
 @pytest.fixture

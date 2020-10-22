@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from lime_uow import resources, shared_resource_manager, unit_of_work
@@ -10,6 +12,10 @@ class SqlAlchemyUserSession(resources.SqlAlchemySession):
     def __init__(self, session_factory: orm.sessionmaker, /):
         self._session_factory = session_factory
         super().__init__(session_factory)
+
+    @classmethod
+    def interface(cls) -> typing.Type[SqlAlchemyUserSession]:
+        return cls
 
 
 class TestUnitOfWork(unit_of_work.UnitOfWork):

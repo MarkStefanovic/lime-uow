@@ -1,8 +1,7 @@
 import typing
 
 __all__ = (
-    "LimeUoWException",
-    "DuplicateResourceNames",
+    "LimeUoWException", "MultipleRegisteredImplementations",
     "InvalidResource",
     "MissingResourceError",
     "OutsideTransactionError",
@@ -18,7 +17,7 @@ class LimeUoWException(Exception):
         super().__init__(message)
 
 
-class DuplicateResourceNames(LimeUoWException):
+class MultipleRegisteredImplementations(LimeUoWException):
     def __init__(self, duplicates: typing.Mapping[str, int], /):
         self.duplicates = duplicates
 
@@ -59,8 +58,7 @@ class OutsideTransactionError(LimeUoWException):
 
 
 class RollbackError(LimeUoWException):
-    def __init__(self, *, resource_name: str, message: str):
-        self.resource_name = resource_name
+    def __init__(self, *, message: str):
         super().__init__(message)
 
 
@@ -69,7 +67,7 @@ class RollbackErrors(LimeUoWException):
         self.rollback_errors = rollback_errors
         err_msg = (
             f"The following errors occurred while performing a rollback: "
-            f"{'; '.join(f'[{e.resource_name}] {e.message}' for e in rollback_errors)}."
+            f"{'; '.join(e.message for e in rollback_errors)}."
         )
         super().__init__(err_msg)
 

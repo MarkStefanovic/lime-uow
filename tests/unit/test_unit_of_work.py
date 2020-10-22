@@ -17,6 +17,10 @@ class DummyResource(AbstractDummyResource):
     def __init__(self, shared_resource: str):
         self._shared_resource = shared_resource
 
+    @classmethod
+    def interface(cls) -> typing.Type[AbstractDummyResource]:
+        return AbstractDummyResource
+
     def rollback(self) -> None:
         pass
 
@@ -39,6 +43,10 @@ class DummySharedResource(AbstractDummySharedResource):
 
     def do_something(self):
         pass
+
+    @classmethod
+    def interface(cls) -> typing.Type[AbstractDummySharedResource]:
+        return AbstractDummySharedResource
 
     def open(self) -> str:
         self.is_open = True
@@ -68,10 +76,4 @@ class DummyUOW(unit_of_work.UnitOfWork):
 def test_unit_of_work_get_resource():
     with DummyUOW() as uow:
         repo = uow.get_resource(AbstractDummyResource)  # type: ignore  # see mypy issue 5374
-    assert type(repo) is DummyResource
-
-
-def test_unit_of_work_repository_get_resource_by_name():
-    with DummyUOW() as uow:
-        repo = uow.get_resource_by_name(AbstractDummyResource.__name__)
     assert type(repo) is DummyResource
