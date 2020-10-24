@@ -256,7 +256,7 @@ class SqlAlchemySession(SharedResource[orm.Session]):
     def rollback(self) -> None:
         if self._session is None:
             raise exceptions.RollbackError(
-                message="Attempted to rollback a closed session.",
+                "Attempted to rollback a closed session.",
             )
         else:
             self._session.rollback()

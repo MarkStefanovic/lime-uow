@@ -58,7 +58,7 @@ class OutsideTransactionError(LimeUoWException):
 
 
 class RollbackError(LimeUoWException):
-    def __init__(self, *, message: str):
+    def __init__(self, message: str, /):
         super().__init__(message)
 
 

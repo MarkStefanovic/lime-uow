@@ -13,7 +13,8 @@ __all__ = (
 
 
 R = typing.TypeVar("R", bound=resources.Resource[typing.Any])
-T = typing.TypeVar("T")
+# noinspection PyTypeChecker
+T = typing.TypeVar("T", bound="UnitOfWork")
 
 
 class UnitOfWork(abc.ABC):
@@ -28,7 +29,7 @@ class UnitOfWork(abc.ABC):
         self.__shared_resource_manager = shared_resources
         self.__resources_validated = False
 
-    def __enter__(self) -> UnitOfWork:
+    def __enter__(self: T) -> T:
         fresh_resources = self.create_resources(self.__shared_resource_manager)
         resources.check_for_ambiguous_implementations(fresh_resources)
         self.__resources = set(fresh_resources)
@@ -77,7 +78,7 @@ class UnitOfWork(abc.ABC):
                 except Exception as e:
                     errors.append(
                         exceptions.RollbackError(
-                            message=f"An error occurred while rolling back {self.__class__.__name__}: {e}",
+                            f"An error occurred while rolling back {self.__class__.__name__}: {e}",
                         )
                     )
 
