@@ -15,7 +15,7 @@ T = typing.TypeVar("T")
 class SharedResources:
     def __init__(self, /, *shared_resource: resources.SharedResource[typing.Any]):
         resources.check_for_ambiguous_implementations(shared_resource)
-        self.__shared_resources = list(shared_resource)
+        self.__shared_resources = tuple(shared_resource)
         self.__handles: typing.Dict[str, typing.Any] = {}
         self.__opened = False
         self.__closed = False
@@ -36,7 +36,6 @@ class SharedResources:
             raise exceptions.SharedResourcesClosed()
         for resource in self.__shared_resources:
             resource.close()
-        self.__shared_resources = []
         self.__handles = {}
         self.__closed = True
         self.__opened = False
@@ -65,6 +64,23 @@ class SharedResources:
                 )
             except Exception as e:
                 raise exceptions.LimeUoWException(str(e))
+
+    def __repr__(self) -> str:
+        resources_str = ", ".join(r.interface().__name__ for r in self.__shared_resources)
+        return f"{self.__class__.__name__}: {resources_str}"
+
+    def __eq__(self, other: object) -> bool:
+        if other.__class__ is self.__class__:
+            # noinspection PyTypeChecker
+            return (
+                self.__shared_resources
+                == typing.cast(SharedResources, other).__shared_resources
+            )
+        else:
+            return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.__shared_resources)
 
 
 class PlaceholderSharedResources(SharedResources):
