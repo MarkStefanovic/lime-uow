@@ -1,8 +1,8 @@
-from lime_uow import resources
+import lime_uow as lu
 
 
 def test_temporary_file_shared_resource():
-    with resources.TempFileSharedResource(prefix="test", file_extension="txt") as file:
+    with lu.TempFileSharedResource(prefix="test", file_extension="txt") as file:
         file.add("test this\n")
         file.add("test again")
         assert file.file_path.name.startswith("test")

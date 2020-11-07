@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import os
 import typing
 
+import dotenv
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import orm
 
-from lime_uow import resources
+import lime_uow as lu
+from lime_uow.resources.resource import T
+
+dotenv.load_dotenv(dotenv.find_dotenv())
 
 metadata = sa.MetaData()
 
@@ -26,7 +31,7 @@ class User:
     name: str
 
 
-class AbstractUserRepository(resources.SqlAlchemyRepository[User], abc.ABC):
+class AbstractUserRepository(lu.SqlAlchemyRepository[User], abc.ABC):
     @abc.abstractmethod
     def get_first(self) -> User:
         raise NotImplementedError
@@ -35,6 +40,12 @@ class AbstractUserRepository(resources.SqlAlchemyRepository[User], abc.ABC):
 class UserRepository(AbstractUserRepository):
     def __init__(self, session: orm.Session):
         super().__init__(session)
+
+    def close(self) -> None:
+        pass
+
+    def open(self) -> T:
+        pass
 
     @property
     def entity_type(self) -> typing.Type[User]:
@@ -74,3 +85,8 @@ def session_factory(engine) -> orm.sessionmaker:
 @pytest.fixture
 def user_repo(session_factory: orm.sessionmaker) -> UserRepository:
     return UserRepository(session_factory())
+
+
+@pytest.fixture
+def postgres_db_uri() -> str:
+    return os.environ["PYODBC_URI"]

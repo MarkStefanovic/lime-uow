@@ -1,7 +1,8 @@
 import typing
 
 __all__ = (
-    "LimeUoWException", "MultipleRegisteredImplementations",
+    "LimeUoWException",
+    "MultipleRegisteredImplementations",
     "InvalidResource",
     "MissingResourceError",
     "OutsideTransactionError",
@@ -12,7 +13,7 @@ __all__ = (
 class LimeUoWException(Exception):
     """Base class for exceptions arising from the lime-uow package"""
 
-    def __init__(self, message: str, /):
+    def __init__(self, /, message: str):
         self.message = message
         super().__init__(message)
 
@@ -29,7 +30,7 @@ class MultipleRegisteredImplementations(LimeUoWException):
 
 
 class InvalidResource(LimeUoWException):
-    def __init__(self, message: str, /):
+    def __init__(self, /, message: str):
         super().__init__(message)
 
 
@@ -46,7 +47,7 @@ class MissingResourceError(LimeUoWException):
 
 
 class NoCommonAncestor(LimeUoWException):
-    def __init__(self, message: str, /):
+    def __init__(self, /, message: str):
         super().__init__(message)
 
 
@@ -57,8 +58,13 @@ class OutsideTransactionError(LimeUoWException):
         )
 
 
+class ReadOnlyConnection(LimeUoWException):
+    def __init__(self, /, message: str):
+        super().__init__(message)
+
+
 class RollbackError(LimeUoWException):
-    def __init__(self, message: str, /):
+    def __init__(self, /, message: str):
         super().__init__(message)
 
 
@@ -72,11 +78,11 @@ class RollbackErrors(LimeUoWException):
         super().__init__(err_msg)
 
 
-class SharedResourcesAlreadyOpen(LimeUoWException):
+class ResourcesAlreadyOpen(LimeUoWException):
     def __init__(self):
         super().__init__("SharedResources are already open.")
 
 
-class SharedResourcesClosed(LimeUoWException):
+class ResourceClosed(LimeUoWException):
     def __init__(self):
-        super().__init__("Attempted to access SharedResources when it is closed.")
+        super().__init__("Attempted to access a closed resource.")

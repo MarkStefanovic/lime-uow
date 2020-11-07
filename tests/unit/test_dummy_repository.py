@@ -4,16 +4,23 @@ import typing
 
 import pytest
 
-from lime_uow import resources
+import lime_uow as lu
+from lime_uow.resources.resource import T
 from tests.conftest import User
 
 
-class TestDummyRepository(resources.DummyRepository[User]):
+class TestDummyRepository(lu.DummyRepository[User]):
     def __init__(self, initial_users: typing.List[User]):
         super().__init__(
             initial_values=initial_users,
             key_fn=lambda user: user.user_id,
         )
+
+    def close(self) -> None:
+        pass
+
+    def open(self) -> T:
+        pass
 
     @classmethod
     def interface(cls) -> typing.Type[TestDummyRepository]:

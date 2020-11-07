@@ -3,11 +3,11 @@ from __future__ import annotations
 import abc
 import typing
 
-from lime_uow import resources, unit_of_work
-from lime_uow.unit_of_work import shared_resource_manager
+import lime_uow as lu
+from lime_uow.resources.resource import T
 
 
-class AbstractDummyResource(resources.Resource[typing.Any], abc.ABC):
+class AbstractDummyResource(lu.Resource[typing.Any], abc.ABC):
     @abc.abstractmethod
     def do_something(self):
         raise NotImplementedError
@@ -16,6 +16,12 @@ class AbstractDummyResource(resources.Resource[typing.Any], abc.ABC):
 class DummyResource(AbstractDummyResource):
     def __init__(self, shared_resource: str):
         self._shared_resource = shared_resource
+
+    def close(self) -> None:
+        pass
+
+    def open(self) -> T:
+        pass
 
     @classmethod
     def interface(cls) -> typing.Type[AbstractDummyResource]:
@@ -31,7 +37,7 @@ class DummyResource(AbstractDummyResource):
         print(self._shared_resource)
 
 
-class AbstractDummySharedResource(resources.SharedResource[str], abc.ABC):
+class AbstractDummySharedResource(lu.Resource[str], abc.ABC):
     @abc.abstractmethod
     def do_something(self):
         raise NotImplementedError
@@ -62,13 +68,13 @@ class DummySharedResource(AbstractDummySharedResource):
         pass
 
 
-class DummyUOW(unit_of_work.UnitOfWork):
+class DummyUOW(lu.UnitOfWork):
     def __init__(self):
-        super().__init__(shared_resource_manager.SharedResources(DummySharedResource()))
+        super().__init__(lu.SharedResources(DummySharedResource()))
 
     def create_resources(
-        self, shared_resources: shared_resource_manager.SharedResources
-    ) -> typing.Set[resources.Resource[typing.Any]]:
+        self, shared_resources: lu.SharedResources
+    ) -> typing.Set[lu.Resource[typing.Any]]:
         shared_resource = shared_resources.get(DummySharedResource)
         return {DummyResource(shared_resource)}
 

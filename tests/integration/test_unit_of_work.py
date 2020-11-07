@@ -4,7 +4,8 @@ import typing
 
 import pytest
 
-from lime_uow import exceptions, resources, shared_resource_manager, unit_of_work
+import lime_uow as lu
+from lime_uow.resources.resource import T
 
 
 class Recorder:
@@ -15,7 +16,7 @@ class Recorder:
         self.events.append(action)
 
 
-class TestResource(resources.Resource[Recorder]):
+class TestResource(lu.Resource[Recorder]):
     def __init__(self, shared_resource: str):
         self._shared_resource = shared_resource
         self.handle = Recorder()
@@ -25,6 +26,12 @@ class TestResource(resources.Resource[Recorder]):
     def interface(cls) -> typing.Type[TestResource]:
         return cls
 
+    def close(self) -> None:
+        pass
+
+    def open(self) -> T:
+        pass
+
     def rollback(self) -> None:
         self.handle.events.append("rollback")
 
@@ -32,7 +39,7 @@ class TestResource(resources.Resource[Recorder]):
         self.handle.events.append("save")
 
 
-class TestSharedResource(resources.SharedResource[str]):
+class TestSharedResource(lu.Resource[str]):
     def __init__(self, value: str):
         self.value = value
         self._prior_value = value
@@ -54,27 +61,27 @@ class TestSharedResource(resources.SharedResource[str]):
         self._prior_value = self.value
 
 
-class TestUOW(unit_of_work.UnitOfWork):
+class TestUOW(lu.UnitOfWork):
     def __init__(self):
         super().__init__(
-            shared_resource_manager.SharedResources(TestSharedResource("test"))
+            lu.SharedResources(TestSharedResource("test"))
         )
 
     def create_resources(
-        self, shared_resources: shared_resource_manager.SharedResources
-    ) -> typing.Iterable[resources.Resource[typing.Any]]:
+        self, shared_resources: lu.SharedResources
+    ) -> typing.Iterable[lu.Resource[typing.Any]]:
         return [TestResource(shared_resources.get(TestSharedResource))]
 
 
-class DuplicateJobTestUOW(unit_of_work.UnitOfWork):
+class DuplicateJobTestUOW(lu.UnitOfWork):
     def __init__(self):
         super().__init__(
-            shared_resource_manager.SharedResources(TestSharedResource("test"))
+            lu.SharedResources(TestSharedResource("test"))
         )
 
     def create_resources(
-        self, shared_resources: shared_resource_manager.SharedResources
-    ) -> typing.Iterable[resources.Resource[typing.Any]]:
+        self, shared_resources: lu.SharedResources
+    ) -> typing.Iterable[lu.Resource[typing.Any]]:
         return [
             TestResource(shared_resources.get(TestSharedResource)),
             TestResource(shared_resources.get(TestSharedResource)),
@@ -83,7 +90,7 @@ class DuplicateJobTestUOW(unit_of_work.UnitOfWork):
 
 def test_uow_raises_error_when_duplicate_resources_given():
     with pytest.raises(
-        exceptions.MultipleRegisteredImplementations,
+        lu.exceptions.MultipleRegisteredImplementations,
         match="Resource names must be unique, but found the following duplicates: TestResource = 2",
     ):
         with DuplicateJobTestUOW() as uow:
