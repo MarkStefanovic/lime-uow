@@ -81,11 +81,5 @@ class DummyUOW(lu.UnitOfWork):
 
 def test_unit_of_work_get_resource_given_interface():
     with DummyUOW() as uow:
-        repo = uow.get_resource(AbstractDummyResource)  # type: ignore  # see mypy issue 5374
-    assert type(repo) is DummyResource
-
-
-def test_unit_of_work_get_resource_given_implementation():
-    with DummyUOW() as uow:
-        repo = uow.get_resource(DummyResource)
+        repo = uow.get(AbstractDummyResource)  # type: ignore  # see mypy issue 5374
     assert type(repo) is DummyResource

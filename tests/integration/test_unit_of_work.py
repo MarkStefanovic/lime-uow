@@ -100,7 +100,7 @@ def test_uow_raises_error_when_duplicate_resources_given():
 def test_unit_of_work_save():
     uow = TestUOW()
     with uow:
-        r = uow.get_resource(TestResource)
+        r = uow.get(TestResource)
         uow.save()
 
     assert r.handle.events == ["save", "rollback"]
@@ -108,7 +108,7 @@ def test_unit_of_work_save():
 
 def test_unit_of_work_rollback():
     with TestUOW() as uow:
-        r = uow.get_resource(TestResource)
+        r = uow.get(TestResource)
         uow.rollback()
 
     assert r.handle.events == [

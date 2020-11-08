@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-import inspect
 import typing
 
 from lime_uow import exceptions, resources, shared_resource_manager
@@ -24,7 +23,7 @@ class UnitOfWork(abc.ABC):
         shared_resources: shared_resource_manager.SharedResources = shared_resource_manager.PlaceholderSharedResources(),
     ):
         self.__resources: typing.Optional[
-            typing.Set[resources.Resource[typing.Any]]
+            typing.Dict[str, resources.Resource[typing.Any]]
         ] = None
         self.__shared_resource_manager = shared_resources
         self.__resources_validated = False
@@ -32,7 +31,9 @@ class UnitOfWork(abc.ABC):
     def __enter__(self: T) -> T:
         fresh_resources = self.create_resources(self.__shared_resource_manager)
         resources.check_for_ambiguous_implementations(fresh_resources)
-        self.__resources = set(fresh_resources)
+        self.__resources = {
+            resource.interface().__name__: resource for resource in fresh_resources
+        }
         self.__resources_validated = True
         return self
 
@@ -46,24 +47,29 @@ class UnitOfWork(abc.ABC):
         if errors:
             raise exceptions.RollbackErrors(*errors)
 
-    def get_resource(self, resource_type: typing.Type[R], /) -> R:
+    def exists(self, /, resource_type: typing.Type[R]) -> bool:
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
         else:
-            if inspect.isabstract(resource_type):
-                interface_name = resource_type.__name__
+            return resource_type.__name__ in self.__resources.keys()
+
+    def get(self, /, resource_type: typing.Type[R]) -> R:
+        if self.__resources is None:
+            raise exceptions.OutsideTransactionError()
+        else:
+            if self.__shared_resource_manager.exists(resource_type):
+                return typing.cast(R, self.__shared_resource_manager.get(resource_type))
+            elif (interface_name := resource_type.__name__) in self.__resources.keys():
+                return typing.cast(R, self.__resources[interface_name])
             else:
-                interface_name = resource_type.interface().__name__
-            implementation = next(
-                resource
-                for resource in self.__resources
-                if resource.interface().__name__ == interface_name
-            )
-            return typing.cast(R, implementation)
+                raise exceptions.MissingResourceError(
+                    resource_name=interface_name,
+                    available_resources=self.__resources.keys(),
+                )
 
     @abc.abstractmethod
     def create_resources(
-        self, shared_resources: shared_resource_manager.SharedResources
+        self, /, shared_resources: shared_resource_manager.SharedResources
     ) -> typing.Iterable[resources.Resource[typing.Any]]:
         raise NotImplementedError
 
@@ -72,7 +78,7 @@ class UnitOfWork(abc.ABC):
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
         else:
-            for resource in self.__resources:
+            for resource in self.__resources.values():
                 try:
                     resource.rollback()
                 except Exception as e:
@@ -91,7 +97,7 @@ class UnitOfWork(abc.ABC):
             if self.__resources is None:
                 raise exceptions.OutsideTransactionError()
             else:
-                for resource in self.__resources:
+                for resource in self.__resources.values():
                     resource.save()
         except:
             self.rollback()

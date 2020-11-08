@@ -37,7 +37,7 @@ class TestUnitOfWork(lu.UnitOfWork):
 
 def test_unit_of_work_save(session_factory: orm.sessionmaker):
     with TestUnitOfWork(session_factory) as uow:
-        repo = uow.get_resource(UserRepository)
+        repo = uow.get(UserRepository)
         repo.add(User(user_id=999, name="Steve"))
         uow.save()
 
@@ -52,7 +52,7 @@ def test_unit_of_work_save(session_factory: orm.sessionmaker):
 
 def test_unit_of_work_rollback(session_factory: orm.sessionmaker):
     with TestUnitOfWork(session_factory) as uow:
-        repo = uow.get_resource(UserRepository)
+        repo = uow.get(UserRepository)
         repo.add(User(999, "Mark"))
         uow.rollback()
 

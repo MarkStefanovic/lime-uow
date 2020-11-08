@@ -15,7 +15,11 @@ T = typing.TypeVar("T")
 class SharedResources:
     def __init__(self, /, *shared_resource: resources.Resource[typing.Any]):
         resources.check_for_ambiguous_implementations(shared_resource)
-        self.__shared_resources = tuple(shared_resource)
+
+        self.__shared_resources: typing.Dict[str, resources.Resource[typing.Any]] = {
+            resource.interface().__name__: resource for resource in shared_resource
+        }
+        # self.__shared_resources = tuple(shared_resource)
         self.__handles: typing.Dict[str, typing.Any] = {}
         self.__opened = False
         self.__closed = False
@@ -34,11 +38,15 @@ class SharedResources:
     def close(self):
         if self.__closed:
             raise exceptions.ResourceClosed()
-        for resource in self.__shared_resources:
-            resource.close()
+        for resource_name in self.__handles.keys():
+            self.__shared_resources[resource_name].close()
+            del self.__handles[resource_name]
         self.__handles = {}
         self.__closed = True
         self.__opened = False
+
+    def exists(self, /, resource_type: typing.Type[resources.Resource[T]]):
+        return resource_type.__name__ in self.__shared_resources.keys()
 
     def get(
         self,
@@ -46,34 +54,25 @@ class SharedResources:
     ) -> T:
         if self.__closed:
             raise exceptions.ResourceClosed()
-        if resource_type.interface() in self.__handles.keys():
-            return self.__handles[resource_type.interface().__name__]
+        elif (interface_name := resource_type.interface().__name__) in self.__handles.keys():
+            return self.__handles[interface_name]
+        elif interface_name in self.__shared_resources.keys():
+            resource = self.__shared_resources[interface_name]
+            handle = resource.open()
+            self.__handles[interface_name] = handle
+            return handle
         else:
-            try:
-                resource = next(
-                    resource
-                    for resource in self.__shared_resources
-                    if resource.interface() == resource_type.interface()
-                )
-                handle = resource.open()
-                self.__handles[resource.interface().__name__] = handle
-                return handle
-            except StopIteration:
-                raise exceptions.MissingResourceError(
-                    resource_name=resource_type.interface().__name__,
-                    available_resources={
-                        r.interface().__name__ for r in self.__shared_resources
-                    },
-                )
-            except Exception as e:
-                raise exceptions.LimeUoWException(str(e))
+            raise exceptions.MissingResourceError(
+                resource_name=interface_name,
+                available_resources=self.__shared_resources.keys(),
+            )
 
     def __eq__(self, other: object) -> bool:
         if other.__class__ is self.__class__:
             # noinspection PyTypeChecker
             return (
-                self.__shared_resources
-                == typing.cast(SharedResources, other).__shared_resources
+                self.__shared_resources.keys()
+                == typing.cast(SharedResources, other).__shared_resources.keys()
             )
         else:
             return NotImplemented
@@ -82,9 +81,7 @@ class SharedResources:
         return hash(self.__shared_resources)
 
     def __repr__(self) -> str:
-        resources_str = ", ".join(
-            r.interface().__name__ for r in self.__shared_resources
-        )
+        resources_str = ", ".join(self.__shared_resources.keys())
         return f"{self.__class__.__name__}: {resources_str}"
 
 
