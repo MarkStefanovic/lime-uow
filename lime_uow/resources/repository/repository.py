@@ -3,43 +3,49 @@ import typing
 
 from lime_uow.resources import resource
 
-E = typing.TypeVar("E")
+EntityType = typing.TypeVar("EntityType")
 
 
 __all__ = ("Repository",)
 
 
-class Repository(resource.Resource[E], abc.ABC, typing.Generic[E]):
+class Repository(resource.Resource[None], abc.ABC, typing.Generic[EntityType]):
     """Interface to access elements of a collection"""
 
     @abc.abstractmethod
-    def add(self, item: E, /) -> E:
+    def add(self, /, item: EntityType) -> EntityType:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def add_all(self, items: typing.Collection[E], /) -> typing.Collection[E]:
+    def add_all(self, /, items: typing.Collection[EntityType]) -> typing.Collection[EntityType]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def all(self) -> typing.Iterable[E]:
+    def all(self) -> typing.Iterable[EntityType]:
         raise NotImplementedError
 
+    def close(self) -> None:
+        pass
+
     @abc.abstractmethod
-    def delete(self, item: E, /) -> E:
+    def delete(self, /, item: EntityType) -> EntityType:
         raise NotImplementedError
 
     @abc.abstractmethod
     def delete_all(self) -> None:
         raise NotImplementedError
 
+    def open(self) -> None:
+        pass
+
     @abc.abstractmethod
-    def set_all(self, items: typing.Collection[E], /) -> typing.Collection[E]:
+    def set_all(self, /, items: typing.Collection[EntityType]) -> typing.Collection[EntityType]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def update(self, item: E, /) -> E:
+    def update(self, /, item: EntityType) -> EntityType:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get(self, item_id: typing.Any, /) -> E:
+    def get(self, /, item_id: typing.Any) -> EntityType:
         raise NotImplementedError
