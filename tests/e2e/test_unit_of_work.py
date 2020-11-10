@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing
 
 import lime_uow as lu
+from lime_uow import shared_resource_manager
 from tests.conftest import User, UserRepository
 
 from sqlalchemy import orm
@@ -23,16 +24,18 @@ class TestUnitOfWork(lu.UnitOfWork):
         self,
         session_factory: orm.sessionmaker,
     ):
-        super().__init__(
-            lu.SharedResources(
-                SqlAlchemyUserSession(session_factory)
-            )
-        )
+        super().__init__()
+        self._session_factory = session_factory
 
     def create_resources(
         self, shared_resources: lu.SharedResources
     ) -> typing.AbstractSet[lu.Resource[typing.Any]]:
         return {UserRepository(shared_resources.get(SqlAlchemyUserSession))}
+
+    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
+        return lu.SharedResources(
+            SqlAlchemyUserSession(self._session_factory)
+        )
 
 
 def test_unit_of_work_save(session_factory: orm.sessionmaker):
