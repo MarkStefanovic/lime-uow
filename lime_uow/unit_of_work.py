@@ -45,6 +45,10 @@ class UnitOfWork(abc.ABC):
         if errors:
             raise exceptions.RollbackErrors(*errors)
 
+    def close(self) -> None:
+        if self.__shared_resource_manager:
+            self.__shared_resource_manager.close()
+
     def exists(self, /, resource_type: typing.Type[R]) -> bool:
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
