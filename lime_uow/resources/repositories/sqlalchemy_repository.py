@@ -3,7 +3,7 @@ import typing
 
 from sqlalchemy import orm
 
-from lime_uow.resources.repository import repository
+from lime_uow.resources import repository
 
 EntityType = typing.TypeVar("EntityType")
 

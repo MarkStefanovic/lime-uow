@@ -1,7 +1,7 @@
 import abc
 import typing
 
-from lime_uow.resources.repository import repository
+from lime_uow.resources import repository
 
 E = typing.TypeVar("E")
 

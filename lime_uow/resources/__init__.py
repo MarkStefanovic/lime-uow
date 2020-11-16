@@ -7,3 +7,4 @@ from lime_uow.resources.sqlalchemy_transaction import *
 from lime_uow.resources.temp_file import *
 from lime_uow.resources.sqlalchemy_session import *
 from lime_uow.resources.repository import *
+from lime_uow.resources.repositories import *

@@ -40,7 +40,6 @@ class SharedResources:
             raise exceptions.ResourceClosed()
         for resource_name in self.__handles.keys():
             self.__shared_resources[resource_name].close()
-            del self.__handles[resource_name]
         self.__handles = {}
         self.__closed = True
         self.__opened = False
