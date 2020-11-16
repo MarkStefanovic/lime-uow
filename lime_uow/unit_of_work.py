@@ -17,18 +17,16 @@ T = typing.TypeVar("T", bound="UnitOfWork")
 
 
 class UnitOfWork(abc.ABC):
-    def __init__(
-        self,
-        /,
-        shared_resources: shared_resource_manager.SharedResources = shared_resource_manager.PlaceholderSharedResources(),
-    ):
+    def __init__(self):
         self.__resources: typing.Optional[
             typing.Dict[str, resources.Resource[typing.Any]]
         ] = None
-        self.__shared_resource_manager = shared_resources
         self.__resources_validated = False
+        self.__shared_resource_manager: typing.Optional[shared_resource_manager.SharedResources] = None
 
     def __enter__(self: T) -> T:
+        if self.__shared_resource_manager is None:
+            self.__shared_resource_manager = self.create_shared_resources()
         fresh_resources = self.create_resources(self.__shared_resource_manager)
         resources.check_for_ambiguous_implementations(fresh_resources)
         self.__resources = {
@@ -47,6 +45,10 @@ class UnitOfWork(abc.ABC):
         if errors:
             raise exceptions.RollbackErrors(*errors)
 
+    def close(self) -> None:
+        if self.__shared_resource_manager:
+            self.__shared_resource_manager.close()
+
     def exists(self, /, resource_type: typing.Type[R]) -> bool:
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
@@ -57,7 +59,9 @@ class UnitOfWork(abc.ABC):
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
         else:
-            if self.__shared_resource_manager.exists(resource_type):
+            if self.__shared_resource_manager is None:
+                raise exceptions.OutsideTransactionError()
+            elif self.__shared_resource_manager.exists(resource_type):
                 return typing.cast(R, self.__shared_resource_manager.get(resource_type))
             elif (interface_name := resource_type.__name__) in self.__resources.keys():
                 return typing.cast(R, self.__resources[interface_name])
@@ -71,6 +75,10 @@ class UnitOfWork(abc.ABC):
     def create_resources(
         self, /, shared_resources: shared_resource_manager.SharedResources
     ) -> typing.Iterable[resources.Resource[typing.Any]]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
         raise NotImplementedError
 
     def rollback(self):
@@ -106,9 +114,13 @@ class UnitOfWork(abc.ABC):
 
 class PlaceholderUnitOfWork(UnitOfWork):
     def __init__(self):
-        super().__init__(shared_resource_manager.PlaceholderSharedResources())
+        super().__init__()
 
     def create_resources(
         self, shared_resources: shared_resource_manager.SharedResources
     ) -> typing.List[resources.Resource[typing.Any]]:
         return []
+
+    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
+        return shared_resource_manager.PlaceholderSharedResources()
+

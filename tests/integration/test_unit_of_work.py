@@ -5,6 +5,7 @@ import typing
 import pytest
 
 import lime_uow as lu
+from lime_uow import shared_resource_manager
 from lime_uow.resources.resource import T
 
 
@@ -63,21 +64,20 @@ class TestSharedResource(lu.Resource[str]):
 
 class TestUOW(lu.UnitOfWork):
     def __init__(self):
-        super().__init__(
-            lu.SharedResources(TestSharedResource("test"))
-        )
+        super().__init__()
 
     def create_resources(
         self, shared_resources: lu.SharedResources
     ) -> typing.Iterable[lu.Resource[typing.Any]]:
         return [TestResource(shared_resources.get(TestSharedResource))]
 
+    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
+        return lu.SharedResources(TestSharedResource("test"))
+
 
 class DuplicateJobTestUOW(lu.UnitOfWork):
     def __init__(self):
-        super().__init__(
-            lu.SharedResources(TestSharedResource("test"))
-        )
+        super().__init__()
 
     def create_resources(
         self, shared_resources: lu.SharedResources
@@ -86,6 +86,9 @@ class DuplicateJobTestUOW(lu.UnitOfWork):
             TestResource(shared_resources.get(TestSharedResource)),
             TestResource(shared_resources.get(TestSharedResource)),
         ]
+
+    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
+        return lu.SharedResources(TestSharedResource("test"))
 
 
 def test_uow_raises_error_when_duplicate_resources_given():

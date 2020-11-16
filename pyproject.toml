@@ -15,6 +15,7 @@ pyodbc = "^4.0.30"
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.1"
 python-dotenv = "^0.15.0"
+mypy = "^0.790"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
