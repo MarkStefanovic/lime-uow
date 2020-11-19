@@ -41,12 +41,6 @@ class UserRepository(AbstractUserRepository):
     def __init__(self, session: orm.Session):
         super().__init__(session)
 
-    def close(self) -> None:
-        pass
-
-    def open(self) -> T:
-        pass
-
     @property
     def entity_type(self) -> typing.Type[User]:
         return User

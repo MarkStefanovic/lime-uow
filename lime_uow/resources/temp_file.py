@@ -69,9 +69,6 @@ class TempFileSharedResource(resource.Resource[typing.IO[bytes]]):
         self.handle.seek(0, 2)  # go to end of file
         return content.decode()
 
-    def rollback(self) -> None:
-        pass
-
     def save(self) -> None:
         self.handle.flush()
 

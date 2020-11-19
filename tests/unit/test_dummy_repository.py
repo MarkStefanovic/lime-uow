@@ -16,12 +16,6 @@ class TestDummyRepository(lu.DummyRepository[User]):
             key_fn=lambda user: user.user_id,
         )
 
-    def close(self) -> None:
-        pass
-
-    def open(self) -> T:
-        pass
-
     @classmethod
     def interface(cls) -> typing.Type[TestDummyRepository]:
         return cls

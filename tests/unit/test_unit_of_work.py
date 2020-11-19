@@ -18,21 +18,9 @@ class DummyResource(AbstractDummyResource):
     def __init__(self, shared_resource: str):
         self._shared_resource = shared_resource
 
-    def close(self) -> None:
-        pass
-
-    def open(self) -> T:
-        pass
-
     @classmethod
     def interface(cls) -> typing.Type[AbstractDummyResource]:
         return AbstractDummyResource
-
-    def rollback(self) -> None:
-        pass
-
-    def save(self) -> None:
-        pass
 
     def do_something(self):
         print(self._shared_resource)
@@ -61,12 +49,6 @@ class DummySharedResource(AbstractDummySharedResource):
 
     def close(self) -> None:
         self.is_open = False
-
-    def rollback(self) -> None:
-        pass
-
-    def save(self) -> None:
-        pass
 
 
 class DummyUOW(lu.UnitOfWork):

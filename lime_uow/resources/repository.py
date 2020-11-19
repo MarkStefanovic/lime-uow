@@ -24,9 +24,6 @@ class Repository(resource.Resource[None], abc.ABC, typing.Generic[EntityType]):
     def all(self) -> typing.Iterable[EntityType]:
         raise NotImplementedError
 
-    def close(self) -> None:
-        pass
-
     @abc.abstractmethod
     def delete(self, /, item: EntityType) -> EntityType:
         raise NotImplementedError
@@ -34,9 +31,6 @@ class Repository(resource.Resource[None], abc.ABC, typing.Generic[EntityType]):
     @abc.abstractmethod
     def delete_all(self) -> None:
         raise NotImplementedError
-
-    def open(self) -> None:
-        pass
 
     @abc.abstractmethod
     def set_all(self, /, items: typing.Collection[EntityType]) -> typing.Collection[EntityType]:

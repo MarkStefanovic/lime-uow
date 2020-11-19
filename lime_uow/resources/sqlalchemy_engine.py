@@ -22,15 +22,6 @@ class SqlAlchemyEngine(resource.Resource[sa.engine.Engine]):
             self._engine = sa.create_engine(self._db_uri)
         return self._engine
 
-    def close(self) -> None:
-        pass
-
     @classmethod
     def interface(cls) -> typing.Type[SqlAlchemyEngine]:
         return SqlAlchemyEngine
-
-    def rollback(self) -> None:
-        pass
-
-    def save(self) -> None:
-        pass

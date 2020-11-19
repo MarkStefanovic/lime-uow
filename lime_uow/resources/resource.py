@@ -14,26 +14,22 @@ T = typing.TypeVar("T", covariant=True)
 
 
 class Resource(abc.ABC, typing.Generic[T]):
-    @abc.abstractmethod
     def close(self) -> None:
-        raise NotImplementedError
+        ...
 
     @classmethod
     @abc.abstractmethod
     def interface(cls) -> typing.Type[Resource[T]]:
         raise NotImplementedError
 
-    @abc.abstractmethod
     def open(self) -> T:
-        raise NotImplementedError
+        ...
 
-    @abc.abstractmethod
     def rollback(self) -> None:
-        raise NotImplementedError
+        ...
 
-    @abc.abstractmethod
     def save(self) -> None:
-        raise NotImplementedError
+        ...
 
     def __eq__(self, other: object) -> bool:
         if other.__class__ is self.__class__:
