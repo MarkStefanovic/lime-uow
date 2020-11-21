@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import typing
 
@@ -44,6 +46,9 @@ class SqlAlchemyRepository(
     @abc.abstractmethod
     def entity_type(self) -> typing.Type[EntityType]:
         raise NotImplementedError
+
+    def open(self) -> SqlAlchemyRepository[EntityType]:
+        return self
 
     def rollback(self) -> None:
         self.session.rollback()

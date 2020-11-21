@@ -11,7 +11,8 @@ __all__ = (
 )
 
 
-R = typing.TypeVar("R", bound=resources.Resource[typing.Any])
+from lime_uow.resources import resource
+
 # noinspection PyTypeChecker
 T = typing.TypeVar("T", bound="UnitOfWork")
 
@@ -22,7 +23,9 @@ class UnitOfWork(abc.ABC):
             typing.Dict[str, resources.Resource[typing.Any]]
         ] = None
         self.__resources_validated = False
-        self.__shared_resource_manager: typing.Optional[shared_resource_manager.SharedResources] = None
+        self.__shared_resource_manager: typing.Optional[
+            shared_resource_manager.SharedResources
+        ] = None
 
     def __enter__(self: T) -> T:
         if self.__shared_resource_manager is None:
@@ -49,22 +52,24 @@ class UnitOfWork(abc.ABC):
         if self.__shared_resource_manager:
             self.__shared_resource_manager.close()
 
-    def exists(self, /, resource_type: typing.Type[R]) -> bool:
+    def exists(
+        self, /, resource_type: typing.Type[resource.Resource[typing.Any]]
+    ) -> bool:
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
         else:
             return resource_type.__name__ in self.__resources.keys()
 
-    def get(self, /, resource_type: typing.Type[R]) -> R:
+    def get(self, resource_type: typing.Type[resources.Resource[T]]) -> T:
         if self.__resources is None:
             raise exceptions.OutsideTransactionError()
         else:
             if self.__shared_resource_manager is None:
                 raise exceptions.OutsideTransactionError()
             elif self.__shared_resource_manager.exists(resource_type):
-                return typing.cast(R, self.__shared_resource_manager.get(resource_type))
+                return self.__shared_resource_manager.get(resource_type)
             elif (interface_name := resource_type.__name__) in self.__resources.keys():
-                return typing.cast(R, self.__resources[interface_name])
+                return self.__resources[interface_name].open()
             else:
                 raise exceptions.MissingResourceError(
                     resource_name=interface_name,
@@ -123,4 +128,3 @@ class PlaceholderUnitOfWork(UnitOfWork):
 
     def create_shared_resources(self) -> shared_resource_manager.SharedResources:
         return shared_resource_manager.PlaceholderSharedResources()
-

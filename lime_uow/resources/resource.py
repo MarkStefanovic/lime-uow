@@ -23,7 +23,7 @@ class Resource(abc.ABC, typing.Generic[T]):
         raise NotImplementedError
 
     def open(self) -> T:
-        ...
+        return typing.cast(T, self)
 
     def rollback(self) -> None:
         ...

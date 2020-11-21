@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import typing
 
@@ -60,6 +62,9 @@ class DummyRepository(repository.Repository[E], abc.ABC, typing.Generic[E]):
     def delete_all(self) -> None:
         self.events.append(("delete_all", {}))
         self._current_state = []
+
+    def open(self) -> DummyRepository[E]:
+        return self
 
     def set_all(self, items: typing.Collection[E], /) -> typing.Collection[E]:
         self.events.append(("set_all", {"items": items}))

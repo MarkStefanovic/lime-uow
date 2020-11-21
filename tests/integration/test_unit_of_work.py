@@ -30,8 +30,8 @@ class TestResource(lu.Resource[Recorder]):
     def close(self) -> None:
         pass
 
-    def open(self) -> T:
-        pass
+    def open(self) -> Recorder:
+        return self.handle
 
     def rollback(self) -> None:
         self.handle.events.append("rollback")
@@ -103,18 +103,18 @@ def test_uow_raises_error_when_duplicate_resources_given():
 def test_unit_of_work_save():
     uow = TestUOW()
     with uow:
-        r = uow.get(TestResource)
+        r = uow.get(TestResource)  # type: ignore
         uow.save()
 
-    assert r.handle.events == ["save", "rollback"]
+    assert r.events == ["save", "rollback"]
 
 
 def test_unit_of_work_rollback():
     with TestUOW() as uow:
-        r = uow.get(TestResource)
+        r = uow.get(TestResource)  # type: ignore
         uow.rollback()
 
-    assert r.handle.events == [
+    assert r.events == [
         "rollback",
         "rollback",
     ]
