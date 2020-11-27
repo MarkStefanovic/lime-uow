@@ -11,7 +11,6 @@ import sqlalchemy as sa
 from sqlalchemy import orm
 
 import lime_uow as lu
-from lime_uow.resources.resource import T
 
 dotenv.load_dotenv(dotenv.find_dotenv())
 

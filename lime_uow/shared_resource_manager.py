@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import types
 import typing
 
 from lime_uow import exceptions, resources
@@ -32,8 +33,14 @@ class SharedResources:
         self.__opened = True
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_val: typing.Optional[BaseException],
+        exc_tb: typing.Optional[types.TracebackType],
+    ) -> bool:
         self.close()
+        return False
 
     def close(self):
         if self.__closed:
@@ -53,7 +60,9 @@ class SharedResources:
     ) -> T:
         if self.__closed:
             raise exceptions.ResourceClosed()
-        elif (interface_name := resource_type.interface().__name__) in self.__handles.keys():
+        elif (
+            interface_name := resource_type.interface().__name__
+        ) in self.__handles.keys():
             return self.__handles[interface_name]
         elif interface_name in self.__shared_resources.keys():
             resource = self.__shared_resources[interface_name]

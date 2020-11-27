@@ -5,8 +5,6 @@ import typing
 import pytest
 
 import lime_uow as lu
-from lime_uow import shared_resource_manager
-from lime_uow.resources.resource import T
 
 
 class Recorder:
@@ -71,7 +69,7 @@ class TestUOW(lu.UnitOfWork):
     ) -> typing.Iterable[lu.Resource[typing.Any]]:
         return [TestResource(shared_resources.get(TestSharedResource))]
 
-    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
+    def create_shared_resources(self) -> lu.SharedResources:
         return lu.SharedResources(TestSharedResource("test"))
 
 
@@ -87,7 +85,7 @@ class DuplicateJobTestUOW(lu.UnitOfWork):
             TestResource(shared_resources.get(TestSharedResource)),
         ]
 
-    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
+    def create_shared_resources(self) -> lu.SharedResources:
         return lu.SharedResources(TestSharedResource("test"))
 
 

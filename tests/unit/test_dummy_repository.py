@@ -5,7 +5,6 @@ import typing
 import pytest
 
 import lime_uow as lu
-from lime_uow.resources.resource import T
 from tests.conftest import User
 
 

@@ -4,8 +4,6 @@ import abc
 import typing
 
 import lime_uow as lu
-from lime_uow import shared_resource_manager
-from lime_uow.resources.resource import T
 
 
 class AbstractDummyResource(lu.Resource[typing.Any], abc.ABC):
@@ -61,7 +59,7 @@ class DummyUOW(lu.UnitOfWork):
         shared_resource = shared_resources.get(DummySharedResource)
         return {DummyResource(shared_resource)}
 
-    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
+    def create_shared_resources(self) -> lu.SharedResources:
         return lu.SharedResources(DummySharedResource())
 
 

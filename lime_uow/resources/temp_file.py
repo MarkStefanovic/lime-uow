@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pathlib
 import tempfile
+import types
 import typing
 
 from lime_uow.resources import resource
@@ -27,8 +28,14 @@ class TempFileSharedResource(resource.Resource[typing.IO[bytes]]):
         self.open()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_val: typing.Optional[BaseException],
+        exc_tb: typing.Optional[types.TracebackType],
+    ) -> bool:
         self.close()
+        return False
 
     def clear(self):
         self.handle.seek(0, 0)  # go to beginning of file
