@@ -4,7 +4,8 @@ import typing
 
 import sqlalchemy as sa
 
-from lime_uow.resources import resource, sqlalchemy_transaction
+from lime_uow.resources import resource
+from lime_uow.sqlalchemy_resources import sqlalchemy_transaction
 
 __all__ = ("SqlAlchemyEngine",)
 

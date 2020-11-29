@@ -3,12 +3,12 @@ from __future__ import annotations
 import typing
 
 from sqlalchemy import orm
-
 import lime_uow as lu
+from lime_uow import sqlalchemy_resources as lsa
 from tests.conftest import User, UserRepository
 
 
-class SqlAlchemyUserSession(lu.SqlAlchemySession):
+class SqlAlchemyUserSession(lsa.SqlAlchemySession):
     def __init__(self, session_factory: orm.sessionmaker, /):
         self._session_factory = session_factory
         super().__init__(session_factory)
@@ -31,13 +31,13 @@ class TestUnitOfWork(lu.UnitOfWork):
     ) -> typing.AbstractSet[lu.Resource[typing.Any]]:
         return {UserRepository(shared_resources.get(SqlAlchemyUserSession))}
 
-    def create_shared_resources(self) -> lu.SharedResources:
-        return lu.SharedResources(SqlAlchemyUserSession(self._session_factory))
+    def create_shared_resources(self) -> typing.List[lu.Resource[typing.Any]]:
+        return [SqlAlchemyUserSession(self._session_factory)]
 
 
 def test_unit_of_work_save(session_factory: orm.sessionmaker):
     with TestUnitOfWork(session_factory) as uow:
-        repo = uow.get(UserRepository)
+        repo: UserRepository = uow.get(UserRepository)
         repo.add(User(user_id=999, name="Steve"))
         uow.save()
 

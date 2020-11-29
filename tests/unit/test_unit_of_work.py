@@ -59,8 +59,8 @@ class DummyUOW(lu.UnitOfWork):
         shared_resource = shared_resources.get(DummySharedResource)
         return {DummyResource(shared_resource)}
 
-    def create_shared_resources(self) -> lu.SharedResources:
-        return lu.SharedResources(DummySharedResource())
+    def create_shared_resources(self) -> typing.List[lu.Resource[typing.Any]]:
+        return [DummySharedResource()]
 
 
 def test_unit_of_work_get_resource_given_interface():

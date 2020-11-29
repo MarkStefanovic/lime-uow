@@ -69,8 +69,8 @@ class TestUOW(lu.UnitOfWork):
     ) -> typing.Iterable[lu.Resource[typing.Any]]:
         return [TestResource(shared_resources.get(TestSharedResource))]
 
-    def create_shared_resources(self) -> lu.SharedResources:
-        return lu.SharedResources(TestSharedResource("test"))
+    def create_shared_resources(self) -> typing.List[lu.Resource[typing.Any]]:
+        return [TestSharedResource("test")]
 
 
 class DuplicateJobTestUOW(lu.UnitOfWork):
@@ -85,8 +85,8 @@ class DuplicateJobTestUOW(lu.UnitOfWork):
             TestResource(shared_resources.get(TestSharedResource)),
         ]
 
-    def create_shared_resources(self) -> lu.SharedResources:
-        return lu.SharedResources(TestSharedResource("test"))
+    def create_shared_resources(self) -> typing.List[lu.Resource[typing.Any]]:
+        return [TestSharedResource("test")]
 
 
 def test_uow_raises_error_when_duplicate_resources_given():

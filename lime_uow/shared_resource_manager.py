@@ -38,7 +38,7 @@ class SharedResources:
         exc_type: typing.Optional[typing.Type[BaseException]],
         exc_val: typing.Optional[BaseException],
         exc_tb: typing.Optional[types.TracebackType],
-    ) -> bool:
+    ) -> typing.Literal[False]:
         self.close()
         return False
 

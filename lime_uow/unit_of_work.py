@@ -29,7 +29,8 @@ class UnitOfWork(abc.ABC):
 
     def __enter__(self: T) -> T:
         if self.__shared_resource_manager is None:
-            self.__shared_resource_manager = self.create_shared_resources()
+            shared_resources = self.create_shared_resources()
+            self.__shared_resource_manager = shared_resource_manager.SharedResources(*shared_resources)
         fresh_resources = self.create_resources(self.__shared_resource_manager)
         resources.check_for_ambiguous_implementations(fresh_resources)
         self.__resources = {
@@ -83,7 +84,7 @@ class UnitOfWork(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
+    def create_shared_resources(self) -> typing.Iterable[resources.Resource[typing.Any]]:
         raise NotImplementedError
 
     def rollback(self):
@@ -126,5 +127,5 @@ class PlaceholderUnitOfWork(UnitOfWork):
     ) -> typing.List[resources.Resource[typing.Any]]:
         return []
 
-    def create_shared_resources(self) -> shared_resource_manager.SharedResources:
-        return shared_resource_manager.PlaceholderSharedResources()
+    def create_shared_resources(self) -> typing.List[resources.Resource[typing.Any]]:
+        return []

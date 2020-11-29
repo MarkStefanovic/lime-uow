@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lime-uow"
-version = "0.1.42"
+version = "0.1.43"
 description = "Framework to support the Unit-of-Work pattern"
 authors = ["Mark Stefanovic <markstefanovic@hotmail.com>"]
 include = ["lime_uow/py.typed"]
@@ -9,8 +9,12 @@ repository = "https://github.com/MarkStefanovic/lime-uow"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-SQLAlchemy = "^1.3.19"
-pyodbc = "^4.0.30"
+SQLAlchemy = { version = "^1.3.19", optional = true }
+pyodbc = { version = "^4.0.30", optional = true }
+
+[tool.poetry.extras]
+pyodbc = ["pyodbc"]
+sqlalchemy = ["SQLAlchemy"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"

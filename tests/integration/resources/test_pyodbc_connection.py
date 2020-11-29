@@ -1,9 +1,9 @@
 import pyodbc
 
-import lime_uow as lu
+from lime_uow import pyodbc_resources as lpa
 
 
 def test_pyodbc_connection_open(postgres_db_uri: str) -> None:
-    pc = lu.PyodbcConnection(db_uri=postgres_db_uri, autocommit=False, read_only=False)
+    pc = lpa.PyodbcConnection(db_uri=postgres_db_uri, autocommit=False, read_only=False)
     con = pc.open()
     assert isinstance(con, pyodbc.Connection)

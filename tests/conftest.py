@@ -11,6 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy import orm
 
 import lime_uow as lu
+import lime_uow.sqlalchemy_resources as lsa
 
 dotenv.load_dotenv(dotenv.find_dotenv())
 
@@ -30,7 +31,7 @@ class User:
     name: str
 
 
-class AbstractUserRepository(lu.SqlAlchemyRepository[User], abc.ABC):
+class AbstractUserRepository(lsa.SqlAlchemyRepository[User], abc.ABC):
     @abc.abstractmethod
     def get_first(self) -> User:
         raise NotImplementedError
